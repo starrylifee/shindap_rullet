@@ -1,0 +1,3077 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>신답룰렛 - 신답초등학교 뽑기판</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐰%3C/text%3E%3C/svg%3E">
+<meta property="og:title" content="신답룰렛 - 두근두근 구슬 레이스 뽑기판">
+<meta property="og:description" content="우리 반 추첨을 구슬 레이스로! 당첨 뽑기부터 모둠·자리 배치까지 한 번에.">
+<meta property="og:image" content="https://starrylifee.github.io/shindap_rullet/og-image.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, 'Segoe UI', 'Malgun Gothic', sans-serif;
+    color: #e8eaf0;
+    background:
+      radial-gradient(900px 500px at 15% -10%, rgba(91,108,255,0.14), transparent 60%),
+      radial-gradient(800px 500px at 90% 110%, rgba(139,92,246,0.10), transparent 60%),
+      #0f1218;
+  }
+  ::selection { background: rgba(91,108,255,0.4); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  /* 전체화면 버튼 (항상 우상단) */
+  #fsBtn {
+    position: fixed; top: 14px; right: 16px; z-index: 15;
+    background: rgba(15,18,24,0.72); border: 1px solid rgba(255,255,255,0.14);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-radius: 10px; padding: 7px 13px;
+    font-size: 12.5px; font-weight: 600; color: #c3c9d5;
+    cursor: pointer; font-family: inherit;
+    transition: background .15s, color .15s;
+  }
+  #fsBtn:hover { background: rgba(30,34,44,0.85); color: #e8eaf0; }
+
+  /* 제외된 학생 칩 */
+  #excludedRow { margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ex-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.4);
+    border-radius: 999px; padding: 2px 11px;
+    font-size: 12.5px; font-weight: 600; color: #f0a5a5;
+    text-decoration: line-through; cursor: pointer; user-select: none;
+    transition: background .15s;
+  }
+  .ex-chip:hover { background: rgba(239,68,68,0.22); }
+  .game-btn.accent { border-color: rgba(91,108,255,0.6); background: rgba(91,108,255,0.2); color: #ccd3ff; }
+  .game-btn.accent:hover { background: rgba(91,108,255,0.32); }
+
+  /* ===== 설정 화면 ===== */
+  #setupScreen {
+    position: absolute; inset: 0;
+    display: flex; align-items: flex-start; justify-content: center;
+    overflow-y: auto; padding: 32px 24px;
+  }
+  .setup-card {
+    background: rgba(255,255,255,0.035);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 22px;
+    padding: 36px 44px;
+    width: min(1120px, 96vw);
+    margin: auto;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+  }
+  .map-row { display: flex; gap: 16px; align-items: stretch; margin-top: 8px; }
+  .map-row .map-grid { flex: 1; margin-top: 0; align-content: start; }
+  #miniWrap {
+    width: 224px; flex-shrink: 0;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 14px;
+    padding: 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  #miniMap { width: 200px; border-radius: 10px; display: block; }
+  #miniName { font-size: 12.5px; font-weight: 600; color: #9aa3b2; }
+  .title {
+    text-align: center;
+    font-size: 40px; font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(120deg, #ffffff 30%, #aab4ff 90%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+  }
+  .subtitle { text-align: center; color: #9aa3b2; font-size: 14px; margin-top: 6px; margin-bottom: 22px; }
+  label.section-label { display: block; font-weight: 600; color: #9aa3b2; margin: 20px 0 8px; font-size: 13.5px; letter-spacing: 0.3px; }
+  #nameInput {
+    width: 100%; height: 130px;
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+    padding: 12px 14px; font-size: 14.5px; resize: vertical;
+    font-family: inherit; line-height: 1.7;
+    background: rgba(0,0,0,0.35); color: #e8eaf0;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  #nameInput::placeholder, input[type=text]::placeholder { color: #566070; }
+  #nameInput:focus { outline: none; border-color: #5b6cff; box-shadow: 0 0 0 3px rgba(91,108,255,0.22); }
+  .hint { font-size: 12.5px; color: #6f7888; margin-top: 6px; }
+  .two-col { display: flex; gap: 16px; flex-wrap: wrap; }
+  .two-col > div { flex: 1; min-width: 220px; }
+  input[type=text] {
+    width: 100%; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
+    padding: 9px 13px; font-size: 14.5px; font-family: inherit;
+    background: rgba(0,0,0,0.35); color: #e8eaf0;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input[type=text]:focus { outline: none; border-color: #5b6cff; box-shadow: 0 0 0 3px rgba(91,108,255,0.22); }
+  #charGrid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; min-height: 36px; }
+  .char-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 999px;
+    padding: 4px 13px 4px 9px; font-size: 13.5px; color: #d5dae4; cursor: pointer;
+    user-select: none; transition: border-color .15s, background .15s, transform .1s;
+  }
+  .char-chip:hover { border-color: #5b6cff; background: rgba(91,108,255,0.12); transform: translateY(-1px); }
+  .char-chip .emoji { font-size: 18px; }
+  .btn-row { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  .opt-btn {
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    background: transparent; padding: 8px 16px; font-size: 13.5px; font-weight: 600;
+    color: #c3c9d5; cursor: pointer; font-family: inherit;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .opt-btn:hover { background: rgba(255,255,255,0.06); }
+  .opt-btn.active { border-color: #5b6cff; background: rgba(91,108,255,0.16); color: #aab4ff; }
+  .check-row { display: flex; gap: 22px; flex-wrap: wrap; align-items: center; }
+  .check-item {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-size: 14px; font-weight: 600; color: #c3c9d5;
+    cursor: pointer; user-select: none;
+  }
+  .check-item input { width: 17px; height: 17px; accent-color: #5b6cff; cursor: pointer; }
+  .map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 8px; margin-top: 8px; }
+  .map-btn {
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    background: transparent;
+    padding: 10px 6px 9px; font-size: 12.5px; font-weight: 600; color: #c3c9d5;
+    cursor: pointer; font-family: inherit; text-align: center; line-height: 1.5;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .map-btn .m-emoji { font-size: 22px; display: block; margin-bottom: 3px; }
+  .map-btn:hover { background: rgba(255,255,255,0.06); }
+  .map-btn.active { border-color: #5b6cff; background: rgba(91,108,255,0.16); color: #aab4ff; }
+  #startBtn {
+    width: 100%; margin-top: 28px;
+    background: linear-gradient(135deg, #5b6cff, #8b5cf6);
+    color: #fff; font-size: 18px; font-weight: 700; letter-spacing: 6px;
+    border: none; border-radius: 14px; padding: 16px;
+    cursor: pointer; font-family: inherit;
+    box-shadow: 0 10px 28px rgba(91,108,255,0.35);
+    transition: transform .12s, box-shadow .12s, filter .12s;
+  }
+  #startBtn:hover { transform: translateY(-1px); filter: brightness(1.08); box-shadow: 0 14px 34px rgba(91,108,255,0.45); }
+  #startBtn:active { transform: translateY(1px); box-shadow: 0 6px 18px rgba(91,108,255,0.3); }
+  .small-btn {
+    background: transparent; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px;
+    padding: 5px 13px; font-size: 12.5px; cursor: pointer; color: #9aa3b2;
+    font-family: inherit; font-weight: 600;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .small-btn:hover { border-color: rgba(255,255,255,0.3); color: #e8eaf0; background: rgba(255,255,255,0.05); }
+  .row-between { display: flex; justify-content: space-between; align-items: center; }
+
+  /* ===== 맵 편집기 ===== */
+  #editorScreen { position: absolute; inset: 0; display: none; }
+  #editorSide {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 260px;
+    background: #12151c; border-right: 1px solid rgba(255,255,255,0.08);
+    padding: 20px 16px; overflow-y: auto; z-index: 5;
+  }
+  #editorSide h2 { font-size: 18px; font-weight: 800; color: #e8eaf0; margin-bottom: 12px; }
+  #editorSide label { display: block; font-size: 12px; font-weight: 600; color: #9aa3b2; margin: 14px 0 5px; letter-spacing: 0.3px; }
+  #editorSide input[type=text], #editorSide select {
+    width: 100%; border: 1px solid rgba(255,255,255,0.1); border-radius: 9px;
+    padding: 7px 10px; font-size: 13.5px; font-family: inherit;
+    background: rgba(0,0,0,0.35); color: #e8eaf0;
+  }
+  #editorSide select option { background: #171a21; }
+  #editorSide input[type=text]:focus, #editorSide select:focus { outline: none; border-color: #5b6cff; }
+  .ed-row { display: flex; gap: 6px; margin-top: 6px; align-items: center; flex-wrap: wrap; }
+  .ed-row > * { flex: 1; }
+  #edTools { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .ed-tool {
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 9px;
+    background: transparent;
+    padding: 7px 4px; font-size: 12px; font-weight: 600; color: #c3c9d5;
+    cursor: pointer; font-family: inherit; text-align: center;
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .ed-tool:hover { background: rgba(255,255,255,0.06); }
+  .ed-tool.active { border-color: #5b6cff; background: rgba(91,108,255,0.16); color: #aab4ff; }
+  .ed-len { padding: 7px 4px; font-size: 12.5px; }
+  #edSaveBtn {
+    width: 100%; margin-top: 12px;
+    background: linear-gradient(135deg, #5b6cff, #8b5cf6);
+    color: #fff; font-size: 14.5px; font-weight: 700; letter-spacing: 2px;
+    border: none; border-radius: 11px; padding: 12px;
+    cursor: pointer; font-family: inherit;
+    box-shadow: 0 8px 22px rgba(91,108,255,0.3);
+    transition: transform .12s, filter .12s;
+  }
+  #edSaveBtn:hover { filter: brightness(1.08); }
+  #edSaveBtn:active { transform: translateY(1px); }
+  #edTestBtn, #edBackBtn { width: 100%; margin-top: 10px; }
+  #editorCanvasWrap {
+    position: absolute; left: 260px; top: 0; right: 0; bottom: 0;
+    display: flex; justify-content: center; overflow: hidden;
+  }
+  #editorCanvas { display: block; cursor: crosshair; }
+
+  /* ===== 게임 화면 ===== */
+  #gameScreen { position: absolute; inset: 0; display: none; }
+  #gameCanvas { display: block; width: 100%; height: 100%; }
+  #topBar {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; z-index: 10; flex-wrap: wrap; justify-content: center;
+  }
+  .game-btn {
+    background: rgba(15,18,24,0.72); border: 1px solid rgba(255,255,255,0.14);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-radius: 10px; padding: 8px 15px;
+    font-size: 13px; font-weight: 600; color: #e8eaf0;
+    cursor: pointer; font-family: inherit;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+    transition: background .15s, border-color .15s;
+  }
+  .game-btn:hover { background: rgba(30,34,44,0.85); border-color: rgba(255,255,255,0.25); }
+  .game-btn.toggled { background: rgba(91,108,255,0.3); border-color: #5b6cff; color: #ccd3ff; }
+  #mapLabel {
+    position: absolute; top: 58px; left: 50%; transform: translateX(-50%);
+    z-index: 9; background: rgba(15,18,24,0.6); border: 1px solid rgba(255,255,255,0.1);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    border-radius: 999px; padding: 3px 16px; font-size: 12.5px; font-weight: 600; color: #c3c9d5;
+  }
+  #rankPanel {
+    position: absolute; top: 14px; left: 16px; z-index: 10;
+    background: rgba(15,18,24,0.72); border: 1px solid rgba(255,255,255,0.12);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-radius: 14px;
+    padding: 12px 16px; min-width: 160px; max-height: 66vh; overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+  #rankPanel h3 { font-size: 12px; font-weight: 700; color: #9aa3b2; letter-spacing: 0.5px; margin-bottom: 6px; }
+  #rankList { list-style: none; font-size: 13.5px; line-height: 1.9; color: #e8eaf0; }
+  #rankList li.winner-line { font-weight: 700; color: #fbbf24; }
+
+  /* ===== 당첨 발표 ===== */
+  #winnerOverlay {
+    position: absolute; inset: 0; z-index: 20;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(8,10,14,0.7);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  }
+  .winner-card {
+    position: relative;
+    background: #14171f; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 22px;
+    padding: 42px 64px 36px; text-align: center;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    animation: pop .45s cubic-bezier(.2,1.6,.4,1);
+  }
+  /* 시상식 후광 */
+  .winner-card::before {
+    content: ''; position: absolute; inset: -60px; z-index: -1;
+    background: radial-gradient(closest-side, rgba(251,191,36,0.22), transparent);
+    animation: glowPulse 2.2s ease-in-out infinite;
+    border-radius: 50%;
+  }
+  @keyframes glowPulse { 0%, 100% { opacity: 0.55; transform: scale(0.92); } 50% { opacity: 1; transform: scale(1.06); } }
+  .wn-line {
+    display: block; opacity: 0; transform: translateY(14px);
+    animation: nameIn .5s cubic-bezier(.2,1.4,.4,1) forwards;
+    background: linear-gradient(120deg, #ffd76a, #fbbf24);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  @keyframes nameIn { to { opacity: 1; transform: translateY(0); } }
+  .podium-item .p-block { transform-origin: bottom; animation: podiumRise .65s cubic-bezier(.2,1.4,.4,1) backwards; }
+  @keyframes podiumRise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+  @keyframes pop { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .winner-emoji { font-size: 80px; animation: bounce 0.9s infinite alternate ease-in-out; display: inline-block; }
+  @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-14px); } }
+  .winner-label { font-size: 15px; font-weight: 600; color: #9aa3b2; margin-top: 12px; letter-spacing: 1px; }
+  .winner-name {
+    font-size: 54px; font-weight: 800; letter-spacing: -1px; margin: 8px 0 24px;
+    color: #fbbf24;
+    line-height: 1.25;
+  }
+  .winner-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  #confettiCanvas { position: absolute; inset: 0; pointer-events: none; z-index: 21; }
+
+  /* ===== 최종 결과 화면 ===== */
+  #resultOverlay {
+    position: absolute; inset: 0; z-index: 25;
+    display: none; overflow-y: auto;
+    background: rgba(8,10,14,0.72);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    padding: 28px;
+  }
+  .result-card {
+    background: #14171f; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 22px;
+    max-width: 920px; margin: 0 auto 28px;
+    padding: 32px 36px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+  }
+  .result-title { font-size: 24px; font-weight: 800; color: #e8eaf0; text-align: center; letter-spacing: -0.3px; }
+  .result-sub { text-align: center; color: #9aa3b2; font-size: 13px; margin: 6px 0 22px; }
+  .podium { display: flex; justify-content: center; align-items: flex-end; gap: 16px; margin-bottom: 26px; }
+  .podium-item { text-align: center; }
+  .podium-item .p-emoji { font-size: 42px; }
+  .podium-item .p-name { font-weight: 700; font-size: 15px; color: #e8eaf0; margin-top: 2px; }
+  .podium-item .p-block {
+    border-radius: 10px 10px 4px 4px; margin-top: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: rgba(0,0,0,0.55); font-size: 20px;
+  }
+  .rank-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .rank-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    border-radius: 999px; padding: 5px 14px; font-size: 13.5px; font-weight: 600;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #e8eaf0;
+  }
+  .rank-chip.gold { border-color: rgba(251,191,36,0.6); background: rgba(251,191,36,0.1); }
+  .rank-chip.silver { border-color: rgba(203,213,225,0.5); background: rgba(203,213,225,0.08); }
+  .rank-chip.bronze { border-color: rgba(217,119,6,0.5); background: rgba(217,119,6,0.1); }
+  .rank-chip.win { border-color: rgba(251,191,36,0.7); background: rgba(251,191,36,0.13); color: #ffd76a; }
+  .rank-chip .rk { color: #9aa3b2; font-size: 11.5px; }
+  .team-size-row { display: flex; gap: 8px; align-items: center; justify-content: center; margin: 8px 0 18px; flex-wrap: wrap; }
+  .team-size-row span { color: #9aa3b2; }
+  .team-wrap { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+  .team-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 14px;
+    padding: 14px 16px; min-width: 190px;
+  }
+  .team-card h4 { color: #aab4ff; font-size: 13.5px; font-weight: 700; margin-bottom: 10px; text-align: center; letter-spacing: 0.5px; }
+  .desks { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .desk {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 9px; padding: 6px 10px; font-size: 13px; font-weight: 600;
+    color: #e8eaf0; text-align: center; white-space: nowrap;
+  }
+  /* 자리 배치 (교실 책상 배열) */
+  #seatBoard { max-width: 660px; margin: 0 auto; }
+  .teacher-desk {
+    width: 190px; margin: 0 auto 18px;
+    background: rgba(91,108,255,0.14); border: 1px solid rgba(91,108,255,0.5); border-radius: 9px;
+    text-align: center; font-weight: 700; color: #aab4ff; font-size: 13px; padding: 6px;
+  }
+  .seat-grid { display: grid; gap: 8px 10px; justify-content: center; }
+  .result-btns { display: flex; gap: 10px; justify-content: center; margin-top: 26px; flex-wrap: wrap; }
+  h3.result-section {
+    font-size: 13px; font-weight: 700; color: #9aa3b2; margin: 28px 0 12px; text-align: center;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<button id="fsBtn" title="전체화면">⛶ 전체화면</button>
+
+<!-- ============ 설정 화면 ============ -->
+<div id="setupScreen">
+  <div class="setup-card">
+    <div class="title">신답룰렛</div>
+    <div class="subtitle" id="subtitleText">신답초등학교 뽑기판</div>
+
+    <div class="two-col">
+      <div>
+        <label class="section-label">우리 반 이름</label>
+        <input type="text" id="classInput" placeholder="예: 3학년 5반">
+      </div>
+      <div>
+        <label class="section-label">학교 영어 이름 (깨기 블록용)</label>
+        <input type="text" id="schoolInput" placeholder="예: SHINDAP" maxlength="12">
+        <div class="hint">맵에 알파벳 블록으로 나와요. 부딪히면 깨져요!</div>
+      </div>
+    </div>
+
+    <div class="row-between">
+      <label class="section-label" for="nameInput">참가자 이름 (한 줄에 한 명)</label>
+      <button class="small-btn" id="clearBtn">전체 지우기</button>
+    </div>
+    <textarea id="nameInput" placeholder="김민준&#10;이서연&#10;박지호&#10;최하은&#10;&#10;이름*3 처럼 쓰면 3번 나와요"></textarea>
+    <div class="hint"><b>이름*3</b> 처럼 쓰면 그 학생 캐릭터가 3개 나와서 당첨 확률이 높아져요.</div>
+    <div id="excludedRow" style="display:none;">
+      <span class="hint" style="font-weight:600;">이번 추첨에서 제외:</span>
+      <span id="excludedChips"></span>
+      <button class="small-btn" id="clearExcludedBtn">모두 해제</button>
+    </div>
+
+    <div class="row-between">
+      <label class="section-label">캐릭터</label>
+      <div class="btn-row" style="margin-top:0;">
+        <button class="opt-btn" id="charsOnBtn">캐릭터로 달리기</button>
+        <button class="opt-btn" id="charsOffBtn">공으로 달리기</button>
+      </div>
+    </div>
+    <div id="charSection">
+      <div class="row-between">
+        <span class="hint">칩을 누르면 캐릭터가 바뀌어요.</span>
+        <button class="small-btn" id="shuffleCharBtn">캐릭터 섞기</button>
+      </div>
+      <div id="charGrid"></div>
+    </div>
+
+    <div class="row-between">
+      <label class="section-label">맵 고르기</label>
+      <button class="small-btn" id="openEditorBtn">맵 편집기</button>
+    </div>
+    <div class="map-row">
+      <div class="map-grid" id="mapGrid"></div>
+      <div id="miniWrap">
+        <canvas id="miniMap" width="200" height="330"></canvas>
+        <div id="miniName">미리보기</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <label class="section-label">당첨 방식</label>
+        <div class="btn-row">
+          <button class="opt-btn" id="modeFirst">1등 당첨</button>
+          <button class="opt-btn" id="modeLast">꼴찌 당첨</button>
+        </div>
+        <div class="btn-row" style="align-items:center; margin-top:10px;">
+          <span style="font-size:17px; font-weight:700;">당첨 인원</span>
+          <button class="small-btn" id="winnerMinus" style="font-size:18px; padding:2px 14px;">−</button>
+          <span id="winnerCountLabel" style="font-size:20px; font-weight:700; min-width:48px; text-align:center;">1명</span>
+          <button class="small-btn" id="winnerPlus" style="font-size:18px; padding:2px 14px;">＋</button>
+        </div>
+      </div>
+      <div>
+        <label class="section-label">그림 스타일</label>
+        <div class="btn-row">
+          <button class="opt-btn theme-btn" data-theme="flat">플랫</button>
+          <button class="opt-btn theme-btn" data-theme="3d">입체</button>
+          <button class="opt-btn theme-btn" data-theme="marble">구슬</button>
+        </div>
+      </div>
+    </div>
+
+    <label class="section-label">결과 화면 옵션 <span class="hint" style="display:inline;">— 안 고르면 추첨(순위)만 나와요</span></label>
+    <div class="check-row">
+      <label class="check-item"><input type="checkbox" id="optTeams"> 조(모둠) 배치</label>
+      <label class="check-item"><input type="checkbox" id="optSeats"> 자리 배치</label>
+    </div>
+
+    <button id="startBtn">출발!</button>
+  </div>
+</div>
+
+<!-- ============ 맵 편집기 ============ -->
+<div id="editorScreen">
+  <div id="editorSide">
+    <h2>맵 편집기</h2>
+    <label>맵 이름</label>
+    <input type="text" id="edName" placeholder="예: 우리반 특급 코스" maxlength="14">
+    <label>내 맵 불러오기</label>
+    <div class="ed-row">
+      <select id="edLoadSelect"><option value="">-- 새 맵 --</option></select>
+    </div>
+    <label>도구 (캔버스를 눌러서 배치)</label>
+    <div id="edTools"></div>
+    <div class="ed-row">
+      <div style="flex:1"><label style="margin-top:4px;">글자 블록</label><select id="edLetterSel"></select></div>
+      <div style="flex:1"><label style="margin-top:4px;">적군 종류</label><select id="edEnemySel">
+        <option>👾</option><option>🤖</option><option>👻</option><option>🦖</option><option>🐊</option><option>🦂</option>
+      </select></div>
+    </div>
+    <label>코스 길이</label>
+    <div class="ed-row">
+      <button class="opt-btn ed-len" data-len="2200">짧게</button>
+      <button class="opt-btn ed-len" data-len="3500">보통</button>
+      <button class="opt-btn ed-len" data-len="5200">길게</button>
+    </div>
+    <div class="ed-row">
+      <button class="small-btn" id="edUndoBtn">↩ 되돌리기</button>
+      <button class="small-btn" id="edClearBtn">전부 지우기</button>
+    </div>
+    <div class="hint" style="margin-top:10px;">마우스 휠: 위아래 이동<br>벽 도구: 드래그로 긋기<br>이동: 끌어서 옮기기</div>
+    <div class="ed-row">
+      <button class="small-btn" id="edExportBtn">파일로 내보내기</button>
+      <button class="small-btn" id="edImportBtn">파일 가져오기</button>
+    </div>
+    <input type="file" id="edImportFile" accept=".json,application/json" style="display:none;">
+    <button class="game-btn" id="edTestBtn">▶ 테스트 달리기</button>
+    <button id="edSaveBtn">맵 저장</button>
+    <button class="game-btn" id="edBackBtn">돌아가기</button>
+  </div>
+  <div id="editorCanvasWrap"><canvas id="editorCanvas"></canvas></div>
+</div>
+
+<!-- ============ 게임 화면 ============ -->
+<div id="gameScreen">
+  <canvas id="gameCanvas"></canvas>
+  <div id="topBar">
+    <button class="game-btn" id="viewBtn">와이드</button>
+    <button class="game-btn" id="speedBtn">빨리감기</button>
+    <button class="game-btn" id="skipBtn">결과 바로보기</button>
+    <button class="game-btn" id="soundBtn">소리 켬</button>
+    <button class="game-btn" id="bgmBtn">♪ BGM 켬</button>
+    <button class="game-btn" id="homeBtn">처음으로</button>
+  </div>
+  <div id="mapLabel"></div>
+  <div id="rankPanel">
+    <h3>도착 순위</h3>
+    <ol id="rankList"></ol>
+  </div>
+
+  <div id="winnerOverlay">
+    <div class="winner-card">
+      <div class="winner-emoji" id="winnerEmoji">🎉</div>
+      <div class="winner-label" id="winnerLabel">당첨!</div>
+      <div class="winner-name" id="winnerName"></div>
+      <div class="winner-btns">
+        <button class="game-btn" id="watchMoreBtn">계속 구경하기</button>
+        <button class="game-btn accent" id="exclAgainBtn">당첨자 빼고 다시</button>
+        <button class="game-btn" id="againBtn">다시 하기</button>
+        <button class="game-btn" id="toSetupBtn">처음으로</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="resultOverlay">
+    <div class="result-card">
+      <div class="result-title" id="resultTitle">최종 결과</div>
+      <div class="result-sub" id="resultSub"></div>
+      <div class="podium" id="podium"></div>
+      <h3 class="result-section">전체 순위</h3>
+      <div class="rank-grid" id="fullRankGrid"></div>
+      <div id="teamSection" style="display:none;">
+        <h3 class="result-section">조(모둠) 배치 (도착 순서대로)</h3>
+        <div class="team-size-row">
+          <span style="font-size:16px;font-weight:700;">한 조 인원:</span>
+          <button class="opt-btn team-size-btn" data-size="3">3명</button>
+          <button class="opt-btn team-size-btn" data-size="4">4명</button>
+          <button class="opt-btn team-size-btn" data-size="5">5명</button>
+          <button class="opt-btn team-size-btn" data-size="6">6명</button>
+        </div>
+        <div class="team-wrap" id="teamWrap"></div>
+      </div>
+      <div id="seatSection" style="display:none;">
+        <h3 class="result-section">자리 배치 (도착 순서대로)</h3>
+        <div class="team-size-row">
+          <span style="font-size:16px;font-weight:700;">한 줄 자리 수:</span>
+          <button class="opt-btn seat-col-btn" data-cols="4">4자리</button>
+          <button class="opt-btn seat-col-btn" data-cols="5">5자리</button>
+          <button class="opt-btn seat-col-btn" data-cols="6">6자리</button>
+        </div>
+        <div id="seatBoard">
+          <div class="teacher-desk">교탁</div>
+          <div class="seat-grid" id="seatGrid"></div>
+        </div>
+      </div>
+      <div class="result-btns">
+        <button class="game-btn" id="copyResultBtn">결과 복사</button>
+        <button class="game-btn" id="saveImgBtn">이미지 저장</button>
+        <button class="game-btn accent" id="exclAgainBtn2">당첨자 빼고 다시</button>
+        <button class="game-btn" id="resultWatchBtn">레이스 화면</button>
+        <button class="game-btn" id="resultAgainBtn">다시 하기</button>
+        <button class="game-btn" id="resultHomeBtn">처음으로</button>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="confettiCanvas"></canvas>
+</div>
+
+<script>
+'use strict';
+/* ==========================================================
+   신답룰렛 v2 — 신답초등학교 뽑기판
+   물리 엔진 · 맵 10종 · 테마 3종 · 팀짜기 — 전부 자체 제작 (단일 파일)
+   ========================================================== */
+
+// ---------- 상수 ----------
+const WORLD_W = 900;
+const GRAVITY = 1250;         // 경기 속도 (높일수록 빨라짐)
+const MAX_SPEED = 1900;
+const RESTITUTION = 0.45;
+const RUNNER_R = 17;
+const L = 45, R = WORLD_W - 45;
+const EMOJI_POOL = ['🐰','🐶','🐱','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐤','🐧','🦉','🦄','🐢','🐙','🦖','🐳','🦋','🐞','🐿️','🦔','🐹','🐭','🐦','🦕','🐬','🦩','🦜'];
+const COLOR_POOL = ['#fbb6ce','#fbd38d','#9ae6b4','#90cdf4','#d6bcfa','#feb2b2','#fefcbf','#b2f5ea','#c3dafe','#fed7e2','#c6f6d5','#bee3f8'];
+const LS_KEY = 'sindap-roulette-v2';
+
+// ---------- 저장/불러오기 ----------
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }
+  catch (e) { return {}; }
+}
+function saveState(patch) {
+  const s = Object.assign(loadState(), patch);
+  try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch (e) {}
+}
+
+// ---------- DOM ----------
+const $ = id => document.getElementById(id);
+const setupScreen = $('setupScreen'), gameScreen = $('gameScreen');
+const nameInput = $('nameInput'), charGrid = $('charGrid');
+const canvas = $('gameCanvas'), ctx = canvas.getContext('2d');
+const confettiCanvas = $('confettiCanvas'), cctx = confettiCanvas.getContext('2d');
+const rankList = $('rankList');
+
+let mode = 'first';
+let winnerCount = 1;
+let theme = 'flat';
+let soundOn = true;
+let bgmOn = true;
+let excluded = [];   // 이번 추첨에서 제외된 학생 (당첨자 빼고 다시)
+let charMap = {};
+let speedMult = 1;
+let mapChoice = 'random';
+let teamSize = 5;
+let seatCols = 5;
+let showChars = true;
+let viewMode = 'wide';   // follow(표준) | wide(와이드) | all(전체)
+const VIEW_LABELS = { follow: '표준', wide: '와이드', all: '전체' };
+
+// ==========================================================
+//  테마
+// ==========================================================
+const THEMES = {
+  flat:   { wallOuter: '#68a2d8', wallInner: '#a8d3f5', peg: '#cbd5e0', pegLine: '#a0aec0',
+            bumper: '#f6ad55', bumperLine: '#c05621', spinner: '#9f7aea', spinnerHub: '#6b46c1',
+            cloud: 'rgba(255,255,255,0.55)' },
+  '3d':   { wallOuter: '#2c5282', wallInner: '#4a90d9', peg: '#94a7bd', pegLine: '#5a6f88',
+            bumper: '#ed8936', bumperLine: '#9c4221', spinner: '#805ad5', spinnerHub: '#44337a',
+            cloud: 'rgba(255,255,255,0.4)' },
+  marble: { wallOuter: '#8b5e34', wallInner: '#c8996c', peg: '#b0895e', pegLine: '#7a5230',
+            bumper: '#e8b04b', bumperLine: '#9c6d1e', spinner: '#a0763f', spinnerHub: '#6e4a20',
+            cloud: 'rgba(255,255,255,0.35)' }
+};
+function T() { return THEMES[theme] || THEMES.flat; }
+
+// ---------- 초기 상태 복원 ----------
+(function restore() {
+  const s = loadState();
+  if (s.names) nameInput.value = s.names;
+  if (s.mode) mode = s.mode;
+  if (s.winnerCount) winnerCount = s.winnerCount;
+  if (s.charMap) charMap = s.charMap;
+  if (typeof s.soundOn === 'boolean') soundOn = s.soundOn;
+  if (typeof s.bgmOn === 'boolean') bgmOn = s.bgmOn;
+  if (Array.isArray(s.excluded)) excluded = s.excluded;
+  if (s.theme) theme = s.theme;
+  if (s.mapChoice) mapChoice = s.mapChoice;
+  if (s.teamSize) teamSize = s.teamSize;
+  if (s.seatCols) seatCols = s.seatCols;
+  if (typeof s.showChars === 'boolean') showChars = s.showChars;
+  if (s.viewMode) viewMode = s.viewMode;
+  $('optTeams').checked = !!s.useTeams;
+  $('optSeats').checked = !!s.useSeats;
+  $('classInput').value = s.className || '';
+  $('schoolInput').value = (s.schoolName !== undefined) ? s.schoolName : 'SHINDAP';
+  applyThemeClass();
+  updateModeButtons(); updateThemeButtons(); updateSoundButton(); updateBgmButton();
+  updateSubtitle(); updateCharsButtons(); updateWinnerCountLabel(); renderExcluded();
+})();
+
+// ---------- 당첨자 제외 ----------
+function renderExcluded() {
+  const row = $('excludedRow'), chips = $('excludedChips');
+  row.style.display = excluded.length ? 'flex' : 'none';
+  chips.innerHTML = '';
+  excluded.forEach(name => {
+    const c = document.createElement('span');
+    c.className = 'ex-chip';
+    c.textContent = name + ' ✕';
+    c.title = '눌러서 제외 해제';
+    c.onclick = () => {
+      excluded = excluded.filter(n => n !== name);
+      saveState({ excluded });
+      renderExcluded();
+    };
+    chips.appendChild(c);
+  });
+}
+$('clearExcludedBtn').onclick = () => { excluded = []; saveState({ excluded }); renderExcluded(); };
+
+// 제외 학생을 뺀 실제 참가 명단
+function activeEntries() {
+  return parseNames(nameInput.value).filter(e => !excluded.includes(e.name));
+}
+
+// 이번 판 당첨자를 제외 목록에 넣고 바로 재추첨
+function excludeWinnersAndRestart() {
+  excluded = [...new Set([...excluded, ...raceWinners])];
+  saveState({ excluded });
+  renderExcluded();
+  const entries = activeEntries();
+  if (entries.length < 2) {
+    alert('남은 학생이 2명보다 적어요! 처음 화면에서 제외를 해제해 주세요.');
+    goHome();
+    return;
+  }
+  $('winnerOverlay').style.display = 'none';
+  $('resultOverlay').style.display = 'none';
+  startRace(entries);
+}
+
+function updateWinnerCountLabel() { $('winnerCountLabel').textContent = winnerCount + '명'; }
+$('winnerMinus').onclick = () => { winnerCount = Math.max(1, winnerCount - 1); saveState({ winnerCount }); updateWinnerCountLabel(); };
+$('winnerPlus').onclick = () => { winnerCount = Math.min(20, winnerCount + 1); saveState({ winnerCount }); updateWinnerCountLabel(); };
+
+function updateCharsButtons() {
+  $('charsOnBtn').classList.toggle('active', showChars);
+  $('charsOffBtn').classList.toggle('active', !showChars);
+  $('charSection').style.display = showChars ? 'block' : 'none';
+}
+$('charsOnBtn').onclick = () => { showChars = true; saveState({ showChars }); updateCharsButtons(); };
+$('charsOffBtn').onclick = () => { showChars = false; saveState({ showChars }); updateCharsButtons(); };
+function em(r) { return showChars ? r.emoji + ' ' : ''; }
+
+function applyThemeClass() {
+  document.body.classList.remove('theme-3d', 'theme-marble');
+  if (theme === '3d') document.body.classList.add('theme-3d');
+  if (theme === 'marble') document.body.classList.add('theme-marble');
+}
+function updateSubtitle() {
+  const c = $('classInput').value.trim();
+  $('subtitleText').textContent = c ? `신답초등학교 ${c} 뽑기판` : '신답초등학교 뽑기판';
+}
+$('optTeams').onchange = () => saveState({ useTeams: $('optTeams').checked });
+$('optSeats').onchange = () => saveState({ useSeats: $('optSeats').checked });
+
+// ---------- 이름 파싱 ----------
+function parseNames(text) {
+  const entries = [];
+  const seen = new Map();
+  text.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
+    const m = line.match(/^(.+?)\s*[*xX×]\s*(\d+)$/);
+    let name = line, count = 1;
+    if (m) { name = m[1].trim(); count = Math.min(10, Math.max(1, parseInt(m[2]))); }
+    if (!name) return;
+    seen.set(name, (seen.get(name) || 0) + count);
+  });
+  seen.forEach((count, name) => entries.push({ name, count }));
+  return entries;
+}
+
+// ---------- 캐릭터 배정 ----------
+function assignChars(names) {
+  const used = new Set(Object.entries(charMap).filter(([n]) => names.includes(n)).map(([, e]) => e));
+  names.forEach(n => {
+    if (!charMap[n]) {
+      let pick = EMOJI_POOL.find(e => !used.has(e));
+      if (!pick) pick = EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)];
+      charMap[n] = pick;
+      used.add(pick);
+    }
+  });
+  saveState({ charMap });
+}
+
+function renderCharGrid() {
+  const entries = parseNames(nameInput.value);
+  assignChars(entries.map(e => e.name));
+  charGrid.innerHTML = '';
+  entries.forEach(e => {
+    const chip = document.createElement('div');
+    chip.className = 'char-chip';
+    chip.innerHTML = `<span class="emoji">${charMap[e.name]}</span><span>${e.name}${e.count > 1 ? ' ×' + e.count : ''}</span>`;
+    chip.title = '눌러서 캐릭터 바꾸기';
+    chip.onclick = () => {
+      const idx = EMOJI_POOL.indexOf(charMap[e.name]);
+      charMap[e.name] = EMOJI_POOL[(idx + 1) % EMOJI_POOL.length];
+      saveState({ charMap });
+      renderCharGrid();
+    };
+    charGrid.appendChild(chip);
+  });
+}
+
+// ---------- 설정 이벤트 ----------
+nameInput.addEventListener('input', () => { saveState({ names: nameInput.value }); renderCharGrid(); });
+$('classInput').addEventListener('input', () => { saveState({ className: $('classInput').value }); updateSubtitle(); });
+$('schoolInput').addEventListener('input', () => {
+  $('schoolInput').value = $('schoolInput').value.toUpperCase().replace(/[^A-Z ]/g, '');
+  saveState({ schoolName: $('schoolInput').value });
+});
+$('clearBtn').onclick = () => {
+  if (confirm('참가자 이름을 모두 지울까요?')) {
+    nameInput.value = '';
+    saveState({ names: '' });
+    renderCharGrid();
+  }
+};
+$('shuffleCharBtn').onclick = () => {
+  const names = parseNames(nameInput.value).map(e => e.name);
+  const pool = [...EMOJI_POOL].sort(() => Math.random() - 0.5);
+  names.forEach((n, i) => { charMap[n] = pool[i % pool.length]; });
+  saveState({ charMap });
+  renderCharGrid();
+};
+
+function updateModeButtons() {
+  $('modeFirst').classList.toggle('active', mode === 'first');
+  $('modeLast').classList.toggle('active', mode === 'last');
+}
+$('modeFirst').onclick = () => { mode = 'first'; saveState({ mode }); updateModeButtons(); };
+$('modeLast').onclick = () => { mode = 'last'; saveState({ mode }); updateModeButtons(); };
+
+function updateThemeButtons() {
+  document.querySelectorAll('.theme-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.theme === theme));
+}
+document.querySelectorAll('.theme-btn').forEach(b => {
+  b.onclick = () => { theme = b.dataset.theme; saveState({ theme }); updateThemeButtons(); applyThemeClass(); };
+});
+
+// ---------- 사운드 ----------
+let audioCtx = null;
+function beep(freq, dur, type = 'sine', vol = 0.2, delay = 0) {
+  if (!soundOn) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const t = audioCtx.currentTime + delay;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t); o.stop(t + dur);
+  } catch (e) {}
+}
+function fanfare() { [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.35, 'triangle', 0.25, i * 0.15)); }
+function updateSoundButton() { $('soundBtn').textContent = soundOn ? '소리 켬' : '소리 끔'; }
+$('soundBtn').onclick = () => { soundOn = !soundOn; saveState({ soundOn }); updateSoundButton(); };
+
+// ---------- BGM (내장 신디사이저 루프 — 파일 없음) ----------
+const BGM_CHORDS = [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]]; // C - G - Am - F
+const midiHz = m => 440 * Math.pow(2, (m - 69) / 12);
+let bgmTimer = null, bgmStep = 0;
+function startBgm() {
+  stopBgm();
+  if (!bgmOn || !soundOn) return;
+  bgmStep = 0;
+  bgmTimer = setInterval(() => {
+    if (!raceRunning) return;
+    const chord = BGM_CHORDS[Math.floor(bgmStep / 8) % BGM_CHORDS.length];
+    beep(midiHz(chord[bgmStep % 3] + 12), 0.16, 'triangle', 0.045);
+    if (bgmStep % 4 === 0) beep(midiHz(chord[0] - 12), 0.3, 'square', 0.05);
+    if (bgmStep % 8 === 4) beep(midiHz(chord[2] + 24), 0.12, 'sine', 0.03);
+    bgmStep++;
+  }, 220);
+}
+function stopBgm() { if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; } }
+function updateBgmButton() { $('bgmBtn').textContent = bgmOn ? '♪ BGM 켬' : '♪ BGM 끔'; }
+$('bgmBtn').onclick = () => {
+  bgmOn = !bgmOn;
+  saveState({ bgmOn });
+  updateBgmButton();
+  if (bgmOn && raceRunning) startBgm(); else stopBgm();
+};
+
+// ---------- 전체화면 ----------
+$('fsBtn').onclick = () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen().catch(() => {});
+};
+document.addEventListener('fullscreenchange', () => {
+  $('fsBtn').textContent = document.fullscreenElement ? '⛶ 창 모드' : '⛶ 전체화면';
+});
+
+let lastBounceSound = 0;
+function beepBounce(freqBase = 300) {
+  const now = performance.now();
+  if (now - lastBounceSound > 90) {
+    lastBounceSound = now;
+    beep(freqBase + Math.random() * 500, 0.08, 'square', 0.06);
+  }
+}
+
+// ==========================================================
+//  물리 객체
+// ==========================================================
+class Runner {
+  constructor(name, emoji, color, x, y) {
+    this.name = name; this.emoji = emoji; this.color = color;
+    this.x = x; this.y = y; this.vx = 0; this.vy = 0;
+    this.r = RUNNER_R;
+    this.finished = false; this.rank = 0;
+    this.stuckTime = 0;
+    this.spin = Math.random() * Math.PI * 2;
+    this.holeCd = 0;        // 블랙홀에서 내뱉어진 뒤 잠깐 면역
+    this.swallowed = false; // 블랙홀에 삼켜짐 (분신만)
+  }
+}
+class Wall {
+  constructor(x1, y1, x2, y2, thick = 10) {
+    this.x1 = x1; this.y1 = y1; this.x2 = x2; this.y2 = y2; this.t = thick;
+  }
+}
+class Peg {
+  constructor(x, y, r, bouncy = false) { this.x = x; this.y = y; this.r = r; this.bouncy = bouncy; }
+}
+class Spinner {
+  constructor(cx, cy, len, omega, arms = 2, thick = 12, reverseAfterTurns = 0) {
+    this.cx = cx; this.cy = cy; this.len = len;
+    this.omega = omega; this.arms = arms; this.t = thick;
+    this.angle = Math.random() * Math.PI;
+    // n바퀴마다 회전 방향 반전 (0이면 반전 안 함)
+    this.reverseAfter = reverseAfterTurns * Math.PI * 2;
+    this.accum = 0;
+  }
+  segments() {
+    const segs = [];
+    for (let i = 0; i < this.arms; i++) {
+      const a = this.angle + (Math.PI * i) / this.arms;
+      const dx = Math.cos(a) * this.len, dy = Math.sin(a) * this.len;
+      segs.push({ x1: this.cx - dx, y1: this.cy - dy, x2: this.cx + dx, y2: this.cy + dy });
+    }
+    return segs;
+  }
+}
+// 깨지는 블록 (작은 블록들이 모여 글자를 이룬다)
+class LetterBlock {
+  constructor(x, y, w, h, ch, hp = 1, color) {
+    this.x = x; this.y = y; this.w = w; this.h = h;
+    this.ch = ch; this.hp = hp; this.maxHp = hp;
+    this.dead = false;
+    this.color = color || COLOR_POOL[ch.charCodeAt(0) % COLOR_POOL.length];
+    this.shake = 0;
+  }
+}
+// 좌우로 순찰하는 적군
+class Enemy {
+  constructor(x, y, r, vx, minX, maxX, emoji) {
+    this.x = x; this.y = y; this.r = r; this.vx = vx;
+    this.minX = minX; this.maxX = maxX; this.emoji = emoji;
+  }
+}
+// 아이템: clone(분신술) / grow(커지기)
+class Item {
+  constructor(x, y, type) {
+    this.x = x; this.y = y; this.type = type;
+    this.r = 26;
+    this.emoji = type === 'clone' ? '🪄' : '🍄';
+    this.bob = Math.random() * Math.PI * 2;
+    this.taken = false;
+  }
+}
+// 트램펄린: 위에서 밟으면 하늘 높이 튕겨 올린다 (아래에서 올라올 땐 통과)
+class Pad {
+  constructor(x, y, w = 130) {
+    this.x = x; this.y = y; this.w = w;
+    this.squish = 0;
+    this.left = 5;      // 5번 튕기면 사라진다 (5→4→3→2→1)
+    this.dead = false;
+  }
+}
+// 블랙홀: 근처 러너를 위쪽으로 빨아들인다.
+// 같은 학생 캐릭터(분신)가 더 남아 있으면 삼켜서 없애고, 하나뿐이면 위로 내뱉는다 → 역전 장치
+class BlackHole {
+  constructor(x, y) {
+    this.x = x; this.y = y; this.r = 26;
+    this.range = 250;
+    this.phase = Math.random() * Math.PI * 2;
+    this.left = 5;      // 5번 잡아먹으면 사라진다 (5→4→3→2→1)
+    this.dead = false;
+  }
+}
+
+let walls = [], pegs = [], spinners = [], letters = [], enemies = [], runners = [], items = [], holes = [], pads = [];
+let gateWalls = [], gateOpen = false;
+let finishY = 5000;
+let particles = [];   // 월드 좌표 파티클 (블록 깨질 때)
+
+// ==========================================================
+//  맵 구간 생성기 — 각 함수는 startY를 받아 endY를 반환
+// ==========================================================
+function secPegs(y, rows = 6) {
+  for (let row = 0; row < rows; row++) {
+    const yy = y + 60 + row * 140;
+    const offset = (row % 2) ? 75 : 0;
+    for (let x = 130 + offset; x < R - 60; x += 150) pegs.push(new Peg(x, yy, 13));
+  }
+  return y + 60 + rows * 140 + 40;
+}
+function secZigzag(y, n = 3) {
+  for (let i = 0; i < n; i++) {
+    if (i % 2 === 0) walls.push(new Wall(L, y + 40, R - 220, y + 280));
+    else walls.push(new Wall(R, y + 40, L + 220, y + 280));
+    y += 350;
+  }
+  return y + 40;
+}
+// 급경사 램프 — 지그재그보다 짧고 가파른 미끄럼틀 연속
+function secRamps(y, n = 4) {
+  for (let i = 0; i < n; i++) {
+    if (i % 2 === 0) walls.push(new Wall(L, y + 40, R - 320, y + 310));
+    else walls.push(new Wall(R, y + 40, L + 320, y + 310));
+    y += 330;
+  }
+  return y + 40;
+}
+// 뱀길 — 완만한 바닥을 좌→우→좌 길게 왕복 (좌우 이동 강조)
+function secSerpentine(y, n = 4) {
+  for (let i = 0; i < n; i++) {
+    if (i % 2 === 0) walls.push(new Wall(L, y + 40, R - 150, y + 150));
+    else walls.push(new Wall(R, y + 40, L + 150, y + 150));
+    y += 235;
+  }
+  return y + 40;
+}
+// 회오리방 — 원형 챔버 속에서 빙글빙글 돌다가 바닥 틈으로 빠져나간다
+function secVortex(y) {
+  const cx = 450, cy = y + 420, rad = 330;
+  // 입구 깔때기
+  walls.push(new Wall(L, y + 30, cx - 130, y + 130));
+  walls.push(new Wall(R, y + 30, cx + 130, y + 130));
+  // 원형 벽 (위 입구·아래 출구는 뚫어둔다)
+  const N = 28;
+  for (let i = 0; i < N; i++) {
+    const a1 = (i / N) * Math.PI * 2, a2 = ((i + 1) / N) * Math.PI * 2;
+    const deg = (((a1 + a2) / 2) * 180 / Math.PI + 360) % 360;
+    if (Math.abs(deg - 270) < 28) continue;   // 입구
+    if (Math.abs(deg - 90) < 13) continue;    // 출구
+    walls.push(new Wall(cx + Math.cos(a1) * rad, cy + Math.sin(a1) * rad,
+                        cx + Math.cos(a2) * rad, cy + Math.sin(a2) * rad, 12));
+  }
+  // 중앙 회오리 날개 (서로 반대로 도는 이중 날개)
+  spinners.push(new Spinner(cx, cy, 230, 3.2, 3, 14));
+  spinners.push(new Spinner(cx, cy, 120, -4.2, 2, 12));
+  return cy + rad + 90;
+}
+function secSpinners(y, big = false) {
+  spinners.push(new Spinner(250, y + 120, big ? 150 : 130, 2.2, 2));
+  spinners.push(new Spinner(650, y + 120, big ? 150 : 130, -2.2, 2));
+  spinners.push(new Spinner(450, y + 450, big ? 170 : 150, 1.7, 3));
+  spinners.push(new Spinner(220, y + 750, 110, -2.6, 2));
+  spinners.push(new Spinner(680, y + 750, 110, 2.6, 2));
+  return y + 920;
+}
+function secBumpers(y) {
+  pegs.push(new Peg(450, y + 100, 30, true));
+  pegs.push(new Peg(260, y + 350, 26, true));
+  pegs.push(new Peg(640, y + 350, 26, true));
+  pegs.push(new Peg(450, y + 600, 30, true));
+  pegs.push(new Peg(150, y + 600, 22, true));
+  pegs.push(new Peg(750, y + 600, 22, true));
+  return y + 780;
+}
+// 5x7 픽셀 글꼴 — 작은 블록들이 모여 글자 모양을 만든다
+const PIXEL_FONT = {
+  A:['.###.','#...#','#...#','#####','#...#','#...#','#...#'],
+  B:['####.','#...#','####.','#...#','#...#','#...#','####.'],
+  C:['.####','#....','#....','#....','#....','#....','.####'],
+  D:['####.','#...#','#...#','#...#','#...#','#...#','####.'],
+  E:['#####','#....','####.','#....','#....','#....','#####'],
+  F:['#####','#....','####.','#....','#....','#....','#....'],
+  G:['.####','#....','#....','#.###','#...#','#...#','.###.'],
+  H:['#...#','#...#','#####','#...#','#...#','#...#','#...#'],
+  I:['#####','..#..','..#..','..#..','..#..','..#..','#####'],
+  J:['....#','....#','....#','....#','#...#','#...#','.###.'],
+  K:['#...#','#..#.','#.#..','##...','#.#..','#..#.','#...#'],
+  L:['#....','#....','#....','#....','#....','#....','#####'],
+  M:['#...#','##.##','#.#.#','#.#.#','#...#','#...#','#...#'],
+  N:['#...#','##..#','#.#.#','#..##','#...#','#...#','#...#'],
+  O:['.###.','#...#','#...#','#...#','#...#','#...#','.###.'],
+  P:['####.','#...#','#...#','####.','#....','#....','#....'],
+  Q:['.###.','#...#','#...#','#...#','#.#.#','#..#.','.##.#'],
+  R:['####.','#...#','#...#','####.','#.#..','#..#.','#...#'],
+  S:['.####','#....','#....','.###.','....#','....#','####.'],
+  T:['#####','..#..','..#..','..#..','..#..','..#..','..#..'],
+  U:['#...#','#...#','#...#','#...#','#...#','#...#','.###.'],
+  V:['#...#','#...#','#...#','#...#','#...#','.#.#.','..#..'],
+  W:['#...#','#...#','#...#','#.#.#','#.#.#','##.##','#...#'],
+  X:['#...#','.#.#.','..#..','..#..','..#..','.#.#.','#...#'],
+  Y:['#...#','.#.#.','..#..','..#..','..#..','..#..','..#..'],
+  Z:['#####','....#','...#.','..#..','.#...','#....','#####'],
+};
+
+let letterLog = [];        // spawnPixelLetter 호출 기록 (편집기 변환용)
+let lastSectionRange = null; // 섹션이 만든 오브젝트 범위 (편집기 변환용)
+
+// 글자 하나를 작은 블록 무더기로 만들기 (중심 x, 위쪽 y 기준)
+function spawnPixelLetter(ch, cx, ty, cell) {
+  const font = PIXEL_FONT[ch];
+  if (!font) return 0;
+  letterLog.push({ ch, cx, ty });
+  const color = COLOR_POOL[ch.charCodeAt(0) % COLOR_POOL.length];
+  const lx = cx - cell * 2.5;
+  font.forEach((line, ry) => {
+    [...line].forEach((c, colIdx) => {
+      if (c === '#') letters.push(new LetterBlock(lx + colIdx * cell, ty + ry * cell, cell - 2, cell - 2, ch, 1, color));
+    });
+  });
+  return cell * 7;
+}
+
+function secLetters(y, text) {
+  const chars = [...text.replace(/[^A-Z]/g, '')];
+  if (!chars.length) return secPegs(y, 3);
+  let yy = y + 90;
+  for (let i = 0; i < chars.length; i += 7) {
+    const row = chars.slice(i, i + 7);
+    const letterW = Math.min(118, (R - L - 50) / row.length);
+    const cell = letterW / 5.8;
+    const totalW = row.length * letterW;
+    const startX = (WORLD_W - totalW) / 2 + letterW / 2;
+    let h = 0;
+    row.forEach((ch, li) => { h = Math.max(h, spawnPixelLetter(ch, startX + li * letterW, yy, cell)); });
+    yy += h + 280;
+  }
+  return yy + 40;
+}
+function secEnemies(y, count = 3, emojiSet = ['👾','🤖','👻']) {
+  for (let i = 0; i < count; i++) {
+    const yy = y + 100 + i * 260;
+    const minX = L + 80, maxX = R - 80;
+    const speed = (140 + Math.random() * 120) * (i % 2 ? -1 : 1);
+    enemies.push(new Enemy(L + 100 + Math.random() * (R - L - 200), yy, 26, speed, minX, maxX, emojiSet[i % emojiSet.length]));
+    // 사이사이 기둥 몇 개
+    if (i < count - 1) {
+      pegs.push(new Peg(200 + Math.random() * 500, yy + 130, 13));
+      pegs.push(new Peg(200 + Math.random() * 500, yy + 130, 13));
+    }
+  }
+  return y + 100 + count * 260 + 60;
+}
+function secGates(y, rows = 3) {
+  for (let i = 0; i < rows; i++) {
+    const gapX = 170 + Math.random() * (WORLD_W - 500);
+    const yy = y + 100 + i * 300;
+    // 문 쪽으로 기울여서 공이 저절로 굴러 들어가게
+    walls.push(new Wall(L, yy - 34, gapX, yy + 14, 14));
+    walls.push(new Wall(gapX + 160, yy + 14, R, yy - 34, 14));
+  }
+  return y + 100 + rows * 300;
+}
+
+// ==========================================================
+//  맵 10종
+// ==========================================================
+const MAPS = [
+  { id: 'classic',  name: '클래식 콩콩숲', emoji: '🌳', secs: ['pegs6', 'zigzag', 'spinners', 'pegs4', 'bumpers', 'ramps', 'pegs4'],
+    bg: { top: '#9fdcaa', bottom: '#e8f8d8', deco: ['🌲','🌳','🍄','🌼','🐿️'], cloud: true } },
+  { id: 'windmill', name: '바람개비 왕국', emoji: '🌀', secs: ['spinners', 'pegs4', 'spinnersBig', 'ramps', 'bumpers', 'spinners', 'pegs3'],
+    bg: { top: '#c3b3f2', bottom: '#f2ebff', deco: ['🎡','🌷','🦋','🌀'], cloud: true } },
+  { id: 'letters',  name: '학교이름 깨기', emoji: '🔤', secs: ['letters', 'pegs3', 'letters', 'zigzag', 'letters', 'ramps', 'letters'],
+    bg: { top: '#2e6b50', bottom: '#47936f', deco: ['✏️','📚','🎒','🏫','📐'] } },
+  { id: 'alien',    name: '외계인 침공',   emoji: '👾', secs: ['pegs3', 'enemiesA', 'zigzag', 'enemiesA', 'pegs3', 'enemiesA', 'ramps'],
+    bg: { top: '#0d0d33', bottom: '#31315e', deco: ['⭐','🪐','🛸','✨','🌟','🌙'] } },
+  { id: 'slide',    name: '지그재그 미끄럼틀', emoji: '🛝', secs: ['zigzag', 'ramps', 'zigzag', 'ramps', 'zigzag', 'ramps', 'zigzag'],
+    bg: { top: '#ffd28f', bottom: '#fff4d8', deco: ['☀️','🛝','⚽','🌈','🪁'], cloud: true } },
+  { id: 'bumper',   name: '슈퍼 튕튕 나라', emoji: '⭐', secs: ['bumpers', 'pegs6', 'bumpers', 'zigzag', 'bumpers', 'ramps', 'bumpers'],
+    bg: { top: '#ffbcd9', bottom: '#ffeaf4', deco: ['🍭','🍬','🧁','🍩','🍪'] } },
+  { id: 'gates',    name: '좁은 문 대작전', emoji: '🚪', secs: ['gates', 'pegs4', 'gates', 'spinners', 'gates', 'ramps', 'gates'],
+    bg: { top: '#b9c3d4', bottom: '#e6eaf2', deco: ['🏰','🛡️','🚩','⚔️'] } },
+  { id: 'dino',     name: '공룡 동굴 탐험', emoji: '🦖', secs: ['zigzag', 'enemiesB', 'pegs3', 'enemiesB', 'ramps', 'enemiesB', 'pegs3'],
+    bg: { top: '#4d3c29', bottom: '#7d654a', deco: ['🌋','🦴','🌿','🪨','🥚'] } },
+  { id: 'vortex',   name: '회오리 소용돌이', emoji: '🌪', secs: ['pegs3', 'vortex', 'serpentine', 'vortex', 'pegs3'],
+    bg: { top: '#1f3a5c', bottom: '#3f6d8e', deco: ['🌪','🌀','💨','🍃','☁️'] } },
+  { id: 'snake',    name: '좌우 뱀길',      emoji: '🐍', secs: ['serpentine', 'pegs3', 'serpentine', 'bumpers', 'serpentine', 'spinners'],
+    bg: { top: '#7fb069', bottom: '#d8f3c1', deco: ['🐍','🌿','🍀','🐛','🌾'], cloud: true } },
+  { id: 'mix',      name: '뒤죽박죽 랜덤',  emoji: '🎲', secs: 'shuffle',
+    bg: { top: '#ffe29a', bottom: '#c4f0ff', deco: ['🎲','❓','🎈','🎪','🎁'], cloud: true } },
+  { id: 'full',     name: '풀코스 마라톤',  emoji: '🏃', secs: ['pegs4', 'zigzag', 'letters', 'spinners', 'enemiesA', 'gates', 'bumpers', 'ramps', 'pegs4'],
+    bg: { top: '#93d4ff', bottom: '#ffd9ec', deco: ['🏁','🎯','🌈','⭐','🔥'], cloud: true } },
+];
+const DEFAULT_BG = { top: '#aee3ff', bottom: '#eafaf1', deco: ['🌼','🦋','🌈'], cloud: true };
+
+function runSection(key, y, schoolName) {
+  switch (key) {
+    case 'pegs3': return secPegs(y, 3);
+    case 'pegs4': return secPegs(y, 4);
+    case 'pegs6': return secPegs(y, 6);
+    case 'zigzag': return secZigzag(y, 3);
+    case 'ramps': return secRamps(y, 4);
+    case 'serpentine': return secSerpentine(y, 4);
+    case 'vortex': return secVortex(y);
+    case 'spinners': return secSpinners(y, false);
+    case 'spinnersBig': return secSpinners(y, true);
+    case 'bumpers': return secBumpers(y);
+    case 'letters': return secLetters(y, schoolName || 'SHINDAP');
+    case 'enemiesA': return secEnemies(y, 3, ['👾','🤖','👻']);
+    case 'enemiesB': return secEnemies(y, 3, ['🦖','🐊','🦂']);
+    case 'gates': return secGates(y, 3);
+    default: return secPegs(y, 3);
+  }
+}
+
+let currentMapName = '';
+let currentBg = null;
+let decorations = [];
+
+// 배치 후보 지점이 벽·기둥·바람개비·블록과 겹치지 않는지 검사
+function spotClear(x, y, rad) {
+  for (const w of walls) {
+    const dx = w.x2 - w.x1, dy = w.y2 - w.y1;
+    const l2 = dx * dx + dy * dy;
+    let t = l2 ? ((x - w.x1) * dx + (y - w.y1) * dy) / l2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    if (Math.hypot(x - (w.x1 + dx * t), y - (w.y1 + dy * t)) < rad) return false;
+  }
+  for (const p of pegs) if (Math.hypot(x - p.x, y - p.y) < rad + p.r) return false;
+  for (const s of spinners) if (Math.hypot(x - s.cx, y - s.cy) < s.len + 50) return false;
+  for (const b of letters)
+    if (x > b.x - rad && x < b.x + b.w + rad && y > b.y - rad && y < b.y + b.h + rad) return false;
+  return true;
+}
+
+// 보이지 않는 테스트 구슬을 흘려보내 "구슬이 실제로 지나가는 길"을 기록
+// → 아이템·블랙홀을 그 길 위에만 놓기 위한 사전 시뮬레이션
+const FLOW_CELL = 60;
+function probeFlow(fy) {
+  const visited = new Set();
+  const mark = (x, y) => visited.add(((x / FLOW_CELL) | 0) + ',' + ((y / FLOW_CELL) | 0));
+  const dt = 1 / 40;
+  for (let p = 0; p < 44; p++) {
+    const r = { x: 350 + Math.random() * 200, y: 360 + Math.random() * 40,
+                vx: (Math.random() - 0.5) * 260, vy: 0, r: RUNNER_R };
+    let guard = 1400;
+    while (r.y < fy + 200 && guard-- > 0) {
+      r.vy += GRAVITY * dt;
+      const sp = Math.hypot(r.vx, r.vy);
+      if (sp > MAX_SPEED) { r.vx *= MAX_SPEED / sp; r.vy *= MAX_SPEED / sp; }
+      r.x += r.vx * dt; r.y += r.vy * dt;
+      for (const w of walls) collideSegment(r, w.x1, w.y1, w.x2, w.y2, w.t);
+      for (const g of pegs) collideCircle(r, g.x, g.y, g.r, false);
+      for (const s of spinners) for (const seg of s.segments())
+        collideSegment(r, seg.x1, seg.y1, seg.x2, seg.y2, s.t);
+      // 글자 블록은 실제 경기에서 깨져서 뚫리므로 프로브는 통과시킨다
+      if (r.x < r.r) { r.x = r.r; r.vx = Math.abs(r.vx) * 0.5; }
+      if (r.x > WORLD_W - r.r) { r.x = WORLD_W - r.r; r.vx = -Math.abs(r.vx) * 0.5; }
+      // 구석에 끼면 흔들어서 계속 흐르게 (본 게임의 멈춤 방지 밀기와 같은 역할)
+      if (Math.hypot(r.vx, r.vy) < 12) r.vx += (Math.random() < 0.5 ? -1 : 1) * (250 + Math.random() * 200);
+      mark(r.x, r.y);
+    }
+  }
+  return visited;
+}
+function makeReachable(visited) {
+  if (visited.size < 40) return () => true;   // 프로브가 실패한 특이 맵은 기존 방식대로
+  return (x, y, slack) => {
+    const cx = (x / FLOW_CELL) | 0, cy = (y / FLOW_CELL) | 0;
+    for (let dx = -slack; dx <= slack; dx++)
+      for (let dy = -slack; dy <= slack; dy++)
+        if (visited.has((cx + dx) + ',' + (cy + dy))) return true;
+    return false;
+  };
+}
+
+function buildMap(mapDef, previewOnly) {
+  walls = []; pegs = []; spinners = []; letters = []; enemies = []; particles = []; items = []; holes = []; pads = [];
+  letterLog = [];
+
+  // 출발 깔때기 + 문
+  walls.push(new Wall(L, 120, 330, 330));
+  walls.push(new Wall(R, 120, 570, 330));
+  gateWalls = [new Wall(330, 345, 570, 345, 12)];
+  const wallsBeforeSections = walls.length;
+
+  let y = 420;
+  if (mapDef.custom) {
+    // 편집기에서 만든 맵
+    const OY = 420;
+    (mapDef.objects || []).forEach(o => {
+      const oy = o.y + OY;
+      switch (o.type) {
+        case 'peg': pegs.push(new Peg(o.x, oy, 13)); break;
+        case 'bumper': pegs.push(new Peg(o.x, oy, 26, true)); break;
+        case 'spinner': spinners.push(new Spinner(o.x, oy, 130, (o.dir || 1) * 2.2, 2)); break;
+        case 'spinner3': spinners.push(new Spinner(o.x, oy, 150, (o.dir || 1) * 1.7, 3)); break;
+        case 'wall': walls.push(new Wall(o.x, oy, o.x2, o.y2 + OY)); break;
+        case 'letter': spawnPixelLetter(o.ch || 'A', o.x, oy - 56, 16); break;
+        case 'enemy': enemies.push(new Enemy(o.x, oy, 26, 150 * (o.dir || 1),
+          Math.max(L + 60, o.x - 160), Math.min(R - 60, o.x + 160), o.emoji || '👾')); break;
+        case 'hole': holes.push(new BlackHole(o.x, oy)); break;
+        case 'pad': pads.push(new Pad(o.x, oy)); break;
+      }
+    });
+    y = OY + (mapDef.height || 3500);
+  } else {
+    let secs = mapDef.secs;
+    if (secs === 'shuffle') {
+      const all = ['pegs4', 'pegs6', 'zigzag', 'ramps', 'serpentine', 'vortex', 'spinners', 'bumpers', 'letters', 'enemiesA', 'gates'];
+      secs = all.sort(() => Math.random() - 0.5).slice(0, 7);
+    }
+    const schoolName = $('schoolInput').value.trim();
+    secs.forEach(k => { y = runSection(k, y, schoolName); });
+  }
+  // 섹션이 만든 오브젝트 범위 기록 (편집기 "기본 맵 불러오기" 변환용)
+  lastSectionRange = {
+    w0: wallsBeforeSections, w1: walls.length,
+    pegN: pegs.length, spinN: spinners.length, enemyN: enemies.length,
+    height: y - 420
+  };
+
+  // 마지막 깔때기 → 결승선 (회전 장치가 휘저어서 바로 못 들어감)
+  const fy = y + 80;
+  walls.push(new Wall(L, fy, 380, fy + 300));
+  walls.push(new Wall(R, fy, 520, fy + 300));
+  walls.push(new Wall(380, fy + 300, 380, fy + 450));
+  walls.push(new Wall(520, fy + 300, 520, fy + 450));
+  // 결승 앞 회전 장치: 3바퀴마다 좌↔우 방향 전환 → 한쪽 학생만 막히지 않게
+  spinners.push(new Spinner(450, fy + 120, 150, 2.0, 2, 14, 3));
+  finishY = fy + 600;
+
+  // 좌우 외벽
+  walls.push(new Wall(L, 120, L, fy + 10));
+  walls.push(new Wall(R, 120, R, fy + 10));
+
+  // 미리보기(미니맵) 빌드는 코스 모양만 필요 — 아이템류 배치는 생략
+  if (!previewOnly) {
+    // 편집기에서 직접 놓은 블랙홀·트램펄린이 있으면 자동 배치는 건너뛴다
+    const manualHoles = holes.length > 0;
+    const manualPads = pads.length > 0;
+
+    // 구슬이 실제로 지나가는 길 기록 (아이템·블랙홀 배치용)
+    const reachable = makeReachable(probeFlow(fy));
+
+    // 아이템 뿌리기 (분신술 🪄 / 커지기 🍄) — 벽·기둥에 안 겹치고, 구슬이 지나가는 길 위에만
+    const itemCount = Math.max(8, Math.floor((fy - 500) / 320));
+    let placed = 0, guard = 0;
+    while (placed < itemCount && guard++ < itemCount * 90) {
+      const ix = 130 + Math.random() * (WORLD_W - 260);
+      const iy = 520 + ((placed + Math.random()) / itemCount) * (fy - 1150);
+      if (!spotClear(ix, iy, 62)) continue;
+      if (!reachable(ix, iy, 1)) continue;
+      items.push(new Item(ix, iy, placed % 2 === 0 ? 'clone' : 'grow'));
+      placed++;
+    }
+
+    // 블랙홀 배치 — 구슬 길 위에, 장애물·아이템과 안 겹치는 곳에만
+    const holeCount = Math.max(3, Math.floor((fy - 500) / 950));
+    const holeSpan = Math.max(500, fy - 2100);
+    let hPlaced = 0, hGuard = 0;
+    while (!manualHoles && hPlaced < holeCount && hGuard++ < holeCount * 130) {
+      const hx = 180 + Math.random() * (WORLD_W - 360);
+      const hy = 950 + ((hPlaced + Math.random()) / holeCount) * holeSpan;
+      if (!spotClear(hx, hy, 110)) continue;
+      if (!reachable(hx, hy, 2)) continue;
+      if (items.some(it => Math.hypot(it.x - hx, it.y - hy) < 150)) continue;
+      if (holes.some(h => Math.hypot(h.x - hx, h.y - hy) < 360)) continue;
+      holes.push(new BlackHole(hx, hy));
+      hPlaced++;
+    }
+    // 공간이 빡빡한 맵(회오리 등)에서도 블랙홀 최소 2개는 보장 (조건 완화 재시도)
+    if (!manualHoles && holes.length < 2) {
+      let g2 = 0;
+      while (holes.length < 2 && g2++ < 400) {
+        const hx = 180 + Math.random() * (WORLD_W - 360);
+        const hy = 950 + Math.random() * holeSpan;
+        if (!spotClear(hx, hy, 70)) continue;
+        if (!reachable(hx, hy, 2)) continue;
+        if (holes.some(h => Math.hypot(h.x - hx, h.y - hy) < 300)) continue;
+        holes.push(new BlackHole(hx, hy));
+      }
+    }
+
+    // 트램펄린 배치 — 모든 맵에 "위로 튀어오르는" 재미를 (구슬 길 위에만)
+    const padCount = Math.max(3, Math.floor((fy - 500) / 1400));
+    let pPlaced = 0, pGuard = 0;
+    while (!manualPads && pPlaced < padCount && pGuard++ < padCount * 260) {
+      const px = 170 + Math.random() * (WORLD_W - 340);
+      const py = 950 + ((pPlaced + Math.random()) / padCount) * Math.max(500, fy - 2200);
+      if (!spotClear(px, py, 80)) continue;
+      if (!reachable(px, py, 1)) continue;
+      if (holes.some(h => Math.hypot(h.x - px, h.y - py) < 260)) continue;
+      if (items.some(it => Math.hypot(it.x - px, it.y - py) < 110)) continue;
+      if (pads.some(pd => Math.hypot(pd.x - px, pd.y - py) < 380)) continue;
+      pads.push(new Pad(px, py));
+      pPlaced++;
+    }
+  }
+
+  // 배경 + 장식 준비
+  currentBg = mapDef.bg || DEFAULT_BG;
+  decorations = [];
+  for (let dy = 250; dy < fy - 300; dy += 200 + Math.random() * 150) {
+    const side = Math.random() < 0.5;
+    decorations.push({
+      x: side ? 75 + Math.random() * 110 : WORLD_W - 185 + Math.random() * 110,
+      y: dy,
+      emoji: currentBg.deco[Math.floor(Math.random() * currentBg.deco.length)],
+      size: 30 + Math.random() * 28
+    });
+  }
+
+  currentMapName = `${mapDef.emoji} ${mapDef.name}`;
+  $('mapLabel').textContent = currentMapName + ($('classInput').value.trim() ? ' · ' + $('classInput').value.trim() : '');
+}
+
+// ---------- 맵 선택 UI ----------
+function renderMapGrid() {
+  const grid = $('mapGrid');
+  grid.innerHTML = '';
+  const mkBtn = (id, emoji, name, deletable) => {
+    const b = document.createElement('button');
+    b.className = 'map-btn' + (mapChoice === id ? ' active' : '');
+    b.innerHTML = `<span class="m-emoji">${emoji}</span>${name}`;
+    b.onclick = () => { mapChoice = id; saveState({ mapChoice }); renderMapGrid(); };
+    if (deletable) {
+      const del = document.createElement('span');
+      del.textContent = ' ✕';
+      del.style.cssText = 'color:#e53e3e;font-weight:900;cursor:pointer;';
+      del.title = '이 맵 삭제';
+      del.onclick = ev => {
+        ev.stopPropagation();
+        if (!confirm(`'${name}' 맵을 삭제할까요?`)) return;
+        customMaps = customMaps.filter(m => m.id !== id);
+        saveState({ customMaps });
+        if (mapChoice === id) { mapChoice = 'random'; saveState({ mapChoice }); }
+        if (edEditingId === id) edEditingId = null;
+        renderMapGrid();
+      };
+      b.appendChild(del);
+    }
+    grid.appendChild(b);
+  };
+  mkBtn('random', '🎰', '아무 맵이나!');
+  MAPS.forEach(m => mkBtn(m.id, m.emoji, m.name));
+  customMaps.forEach(m => mkBtn(m.id, '🛠', m.name, true));
+  renderMinimap();
+}
+
+// ---------- 미니맵 미리보기 ----------
+function renderMinimap() {
+  const mc = $('miniMap'), mx = mc.getContext('2d');
+  mx.clearRect(0, 0, mc.width, mc.height);
+  mx.fillStyle = '#0d1016';
+  mx.fillRect(0, 0, mc.width, mc.height);
+  mx.textAlign = 'center'; mx.textBaseline = 'middle';
+  if (mapChoice === 'random') {
+    mx.fillStyle = '#566070';
+    mx.font = '700 60px "Pretendard Variable", Pretendard, sans-serif';
+    mx.fillText('?', mc.width / 2, mc.height / 2 - 16);
+    mx.font = '600 13px "Pretendard Variable", Pretendard, sans-serif';
+    mx.fillText('매번 다른 맵이 나와요', mc.width / 2, mc.height / 2 + 34);
+    $('miniName').textContent = '🎰 아무 맵이나!';
+    return;
+  }
+  const def = MAPS.concat(customMaps).find(m => m.id === mapChoice);
+  if (!def) { $('miniName').textContent = '미리보기'; return; }
+  buildMap(def, true);   // 코스 모양만 빠르게 생성
+  $('miniName').textContent = `${def.emoji || '🛠'} ${def.name}${def.secs === 'shuffle' ? ' · 매번 달라요' : ''}`;
+  const H = finishY + 400;
+  const s = Math.min((mc.width - 14) / WORLD_W, (mc.height - 14) / H);
+  mx.save();
+  mx.translate((mc.width - WORLD_W * s) / 2, (mc.height - H * s) / 2);
+  mx.scale(s, s);
+  const bg = def.bg || DEFAULT_BG;
+  const g = mx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, bg.top); g.addColorStop(1, bg.bottom);
+  mx.fillStyle = g;
+  mx.fillRect(0, 60, WORLD_W, H - 60);
+  const th = T();
+  mx.lineCap = 'round';
+  mx.strokeStyle = th.wallOuter;
+  mx.lineWidth = 34;
+  for (const w of walls) {
+    mx.beginPath(); mx.moveTo(w.x1, w.y1); mx.lineTo(w.x2, w.y2); mx.stroke();
+  }
+  for (const p of pegs) {
+    mx.beginPath(); mx.arc(p.x, p.y, Math.max(p.r, 24), 0, Math.PI * 2);
+    mx.fillStyle = p.bouncy ? th.bumper : th.pegLine;
+    mx.fill();
+  }
+  mx.strokeStyle = th.spinner; mx.lineWidth = 26;
+  for (const sp of spinners) {
+    mx.beginPath(); mx.arc(sp.cx, sp.cy, sp.len, 0, Math.PI * 2); mx.stroke();
+  }
+  for (const b of letters) {
+    mx.fillStyle = b.color;
+    mx.fillRect(b.x - 5, b.y - 5, b.w + 10, b.h + 10);
+  }
+  mx.fillStyle = '#e53e3e';
+  for (const e of enemies) {
+    mx.beginPath(); mx.arc(e.x, e.y, 34, 0, Math.PI * 2); mx.fill();
+  }
+  mx.fillStyle = '#1a1030';
+  for (const h of holes) {
+    mx.beginPath(); mx.arc(h.x, h.y, 48, 0, Math.PI * 2); mx.fill();
+  }
+  mx.fillStyle = '#e8543f';
+  for (const pd of pads) {
+    mx.fillRect(pd.x - pd.w / 2 - 10, pd.y - 16, pd.w + 20, 32);
+  }
+  // 결승선
+  for (let x = 0; x < WORLD_W; x += 60) {
+    mx.fillStyle = (x / 60) % 2 ? '#2d3748' : '#fff';
+    mx.fillRect(x, finishY - 18, 60, 36);
+  }
+  mx.restore();
+}
+
+// ---------- 참가자 스폰 ----------
+function spawnRunners(entries) {
+  runners = [];
+  const flat = [];
+  entries.forEach(e => { for (let i = 0; i < e.count; i++) flat.push(e.name); });
+  for (let i = flat.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [flat[i], flat[j]] = [flat[j], flat[i]];
+  }
+  const cols = Math.min(10, Math.max(4, Math.ceil(Math.sqrt(flat.length * 1.6))));
+  const spacing = Math.min(60, (WORLD_W - 300) / cols);
+  flat.forEach((name, i) => {
+    const col = i % cols, row = Math.floor(i / cols);
+    const x = WORLD_W / 2 - ((cols - 1) * spacing) / 2 + col * spacing + (Math.random() - 0.5) * 8;
+    const y = 240 - row * 44;
+    const color = COLOR_POOL[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % COLOR_POOL.length];
+    runners.push(new Runner(name, charMap[name] || '🐰', color, x, y));
+  });
+}
+
+// ==========================================================
+//  충돌 처리
+// ==========================================================
+function collideSegment(r, x1, y1, x2, y2, thick, surfVx = 0, surfVy = 0, extraBounce = 0) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  let t = lenSq ? ((r.x - x1) * dx + (r.y - y1) * dy) / lenSq : 0;
+  t = Math.max(0, Math.min(1, t));
+  const px = x1 + dx * t, py = y1 + dy * t;
+  let nx = r.x - px, ny = r.y - py;
+  let dist = Math.hypot(nx, ny);
+  const minDist = r.r + thick / 2;
+  if (dist >= minDist || dist === 0) return false;
+  nx /= dist; ny /= dist;
+  r.x += nx * (minDist - dist);
+  r.y += ny * (minDist - dist);
+  const rvx = r.vx - surfVx, rvy = r.vy - surfVy;
+  const vn = rvx * nx + rvy * ny;
+  if (vn < 0) {
+    const e = RESTITUTION + extraBounce;
+    const jn = -(1 + e) * vn;
+    let nvx = rvx + jn * nx, nvy = rvy + jn * ny;
+    const tx = -ny, ty = nx;
+    const vt = nvx * tx + nvy * ty;
+    nvx -= tx * vt * 0.015; nvy -= ty * vt * 0.015;   // 마찰 최소화 → 경사로에서 쌩쌩
+    r.vx = nvx + surfVx; r.vy = nvy + surfVy;
+  }
+  // 기울어진 벽(경사로) 위에서는 내리막 방향으로 가속
+  if (Math.abs(ny) > 0.35 && Math.abs(nx) > 0.15) {
+    let sx = -ny, sy = nx;
+    if (sy < 0) { sx = -sx; sy = -sy; }
+    r.vx += sx * 6; r.vy += sy * 6;
+  }
+  return true;
+}
+
+function collideCircle(r, cx, cy, cr, bouncy, surfVx = 0) {
+  let nx = r.x - cx, ny = r.y - cy;
+  let dist = Math.hypot(nx, ny);
+  const minDist = r.r + cr;
+  if (dist >= minDist || dist === 0) return false;
+  nx /= dist; ny /= dist;
+  r.x += nx * (minDist - dist);
+  r.y += ny * (minDist - dist);
+  const rvx = r.vx - surfVx;
+  const vn = rvx * nx + r.vy * ny;
+  if (vn < 0) {
+    const e = bouncy ? 1.15 : RESTITUTION;
+    r.vx = rvx - (1 + e) * vn * nx + surfVx;
+    r.vy += -(1 + e) * vn * ny;
+    if (bouncy) beepBounce();
+  }
+  return true;
+}
+
+// 원 vs 사각형(알파벳 블록)
+function collideRect(r, b) {
+  const cx = Math.max(b.x, Math.min(r.x, b.x + b.w));
+  const cy = Math.max(b.y, Math.min(r.y, b.y + b.h));
+  let nx = r.x - cx, ny = r.y - cy;
+  let dist = Math.hypot(nx, ny);
+  if (dist >= r.r) return false;
+  if (dist === 0) { nx = 0; ny = -1; dist = 0.01; }
+  else { nx /= dist; ny /= dist; }
+  r.x += nx * (r.r - dist);
+  r.y += ny * (r.r - dist);
+  const vn = r.vx * nx + r.vy * ny;
+  const speed = Math.hypot(r.vx, r.vy);
+  if (vn < 0) {
+    // 통통 튀어오르는 블록
+    r.vx += -(1 + 0.85) * vn * nx;
+    r.vy += -(1 + 0.85) * vn * ny;
+  }
+  // 부딪히면 HP 감소 (작은 블록이라 잘 깨짐)
+  if (speed > 130) {
+    b.hp--;
+    b.shake = 0.25;
+    if (b.hp <= 0) {
+      b.dead = true;
+      burstParticles(b.x + b.w / 2, b.y + b.h / 2, b.color, 7);
+      beepBounce(650);
+    }
+  }
+  return true;
+}
+
+function collideRunners(a, b) {
+  let nx = b.x - a.x, ny = b.y - a.y;
+  let dist = Math.hypot(nx, ny);
+  const minDist = a.r + b.r;
+  if (dist >= minDist || dist === 0) return;
+  nx /= dist; ny /= dist;
+  const overlap = (minDist - dist) / 2;
+  a.x -= nx * overlap; a.y -= ny * overlap;
+  b.x += nx * overlap; b.y += ny * overlap;
+  const rvx = b.vx - a.vx, rvy = b.vy - a.vy;
+  const vn = rvx * nx + rvy * ny;
+  if (vn < 0) {
+    const j = -(1 + 0.5) * vn / 2;
+    a.vx -= j * nx; a.vy -= j * ny;
+    b.vx += j * nx; b.vy += j * ny;
+  }
+}
+
+function burstParticles(x, y, color, count = 22) {
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = 120 + Math.random() * 300;
+    particles.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120,
+      life: 0.7 + Math.random() * 0.5, color,
+      size: 4 + Math.random() * 6, rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 10
+    });
+  }
+}
+
+// ==========================================================
+//  시뮬레이션
+// ==========================================================
+const DT = 1 / 60;
+const SUBSTEPS = 3;
+let finishedCount = 0;
+let uniqueFinish = [];   // 학생(이름) 단위 도착 순서
+let raceWinners = [];    // 이번 판 당첨자 이름들
+let raceToken = 0;       // 판 구분용 (지연 콜백이 다음 판을 침범하지 않게)
+let raceRunning = false;
+let winnerDeclared = false;
+let resultShown = false;
+
+function stepPhysics(dt) {
+  const sub = dt / SUBSTEPS;
+  spinners.forEach(s => {
+    s.angle += s.omega * dt;
+    if (s.reverseAfter) {
+      s.accum += Math.abs(s.omega) * dt;
+      if (s.accum >= s.reverseAfter) { s.omega = -s.omega; s.accum = 0; }
+    }
+  });
+  enemies.forEach(e => {
+    e.x += e.vx * dt;
+    if (e.x < e.minX) { e.x = e.minX; e.vx = Math.abs(e.vx); }
+    if (e.x > e.maxX) { e.x = e.maxX; e.vx = -Math.abs(e.vx); }
+  });
+  letters.forEach(b => { if (b.shake > 0) b.shake -= dt; });
+  letters = letters.filter(b => !b.dead);
+  pads.forEach(p => { if (p.squish > 0) p.squish -= dt; });
+  for (const p of particles) {
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vy += 900 * dt; p.rot += p.vr * dt; p.life -= dt;
+  }
+  particles = particles.filter(p => p.life > 0);
+
+  for (let step = 0; step < SUBSTEPS; step++) {
+    for (const r of runners) {
+      if (r.finished || r.swallowed) continue;
+      r.vy += GRAVITY * sub;
+
+      // 블랙홀: 위쪽으로 빨아들이는 인력 + 접촉 처리
+      if (r.holeCd > 0) r.holeCd -= sub;
+      else for (const h of holes) {
+        if (h.dead) continue;
+        const dx = h.x - r.x, dy = h.y - r.y;
+        const d = Math.hypot(dx, dy);
+        if (d > h.range || d === 0) continue;
+        const f = 1600 * (1 - d / h.range);
+        r.vx += (dx / d) * f * sub;
+        r.vy += ((dy / d) - 0.9) * f * sub;   // 위로 감아올리는 힘
+        if (d < h.r + r.r * 0.4) {
+          const twin = runners.some(o => o !== r && o.name === r.name && !o.finished && !o.swallowed);
+          if (twin) {
+            // 분신이 남아 있으면 삼켜서 제거
+            r.swallowed = true;
+            burstParticles(h.x, h.y, '#805ad5', 16);
+            beep(90, 0.4, 'sawtooth', 0.18);
+          } else {
+            // 하나뿐인 학생은 위로 내뱉기 → 역전 찬스
+            r.vy = -(1000 + Math.random() * 500);
+            r.vx = (Math.random() - 0.5) * 700;
+            r.holeCd = 1.6;
+            burstParticles(h.x, h.y, '#b794f4', 10);
+            beep(160, 0.3, 'square', 0.15);
+          }
+          // 5번 잡아먹으면 펑 터지며 사라진다
+          h.left--;
+          if (h.left <= 0) {
+            h.dead = true;
+            burstParticles(h.x, h.y, '#b794f4', 24);
+            beep(520, 0.3, 'triangle', 0.2);
+          }
+          break;
+        }
+      }
+      if (r.swallowed) continue;
+
+      const speed = Math.hypot(r.vx, r.vy);
+      if (speed > MAX_SPEED) { r.vx *= MAX_SPEED / speed; r.vy *= MAX_SPEED / speed; }
+      r.x += r.vx * sub;
+      r.y += r.vy * sub;
+      r.spin += (r.vx * 0.002);
+
+      for (const w of walls) collideSegment(r, w.x1, w.y1, w.x2, w.y2, w.t);
+      if (!gateOpen) for (const w of gateWalls) collideSegment(r, w.x1, w.y1, w.x2, w.y2, w.t);
+      // 트램펄린: 떨어지면서 밟았을 때만 강하게 위로 발사 (밑에서 올라올 땐 통과)
+      for (const pd of pads) {
+        if (pd.dead || r.vy <= 60) continue;
+        if (Math.abs(r.x - pd.x) > pd.w / 2 + r.r * 0.5) continue;
+        if (r.y > pd.y + 6 || pd.y - r.y > r.r + 12) continue;
+        r.y = pd.y - r.r - 4;
+        r.vy = -(1250 + Math.random() * 350);
+        r.vx += (Math.random() - 0.5) * 260;
+        pd.squish = 0.3;
+        burstParticles(pd.x, pd.y, '#f6ad55', 6);
+        beep(700, 0.1, 'triangle', 0.15);
+        beep(1050, 0.12, 'triangle', 0.12, 0.06);
+        // 5번 튕기면 펑 터지며 사라진다
+        pd.left--;
+        if (pd.left <= 0) {
+          pd.dead = true;
+          burstParticles(pd.x, pd.y, '#f6ad55', 20);
+          beep(420, 0.25, 'triangle', 0.18);
+        }
+        break;
+      }
+      for (const p of pegs) collideCircle(r, p.x, p.y, p.r, p.bouncy);
+      for (const s of spinners) {
+        for (const seg of s.segments()) {
+          const relX = r.x - s.cx, relY = r.y - s.cy;
+          const surfVx = -s.omega * relY, surfVy = s.omega * relX;
+          collideSegment(r, seg.x1, seg.y1, seg.x2, seg.y2, s.t, surfVx, surfVy, 0.1);
+        }
+      }
+      for (const b of letters) {
+        if (Math.abs(r.y - b.y) > 160 || b.dead) continue;
+        collideRect(r, b);
+      }
+      for (const e of enemies) {
+        if (collideCircle(r, e.x, e.y, e.r, true, e.vx)) beepBounce(200);
+      }
+      if (r.y < -400) { r.y = -400; r.vy = Math.abs(r.vy) * 0.3; }
+      if (r.x < r.r) { r.x = r.r; r.vx = Math.abs(r.vx) * 0.5; }
+      if (r.x > WORLD_W - r.r) { r.x = WORLD_W - r.r; r.vx = -Math.abs(r.vx) * 0.5; }
+    }
+    for (let i = 0; i < runners.length; i++) {
+      if (runners[i].finished || runners[i].swallowed) continue;
+      for (let j = i + 1; j < runners.length; j++) {
+        if (runners[j].finished || runners[j].swallowed) continue;
+        collideRunners(runners[i], runners[j]);
+      }
+    }
+    // 블랙홀에 삼켜진 분신 / 다 쓴 블랙홀·트램펄린 제거
+    runners = runners.filter(r => !r.swallowed);
+    if (holes.some(h => h.dead)) holes = holes.filter(h => !h.dead);
+    if (pads.some(p => p.dead)) pads = pads.filter(p => !p.dead);
+  }
+
+  // 아이템 획득
+  const newClones = [];
+  for (const it of items) {
+    if (it.taken) continue;
+    for (const r of runners) {
+      if (r.finished) continue;
+      if (Math.hypot(r.x - it.x, r.y - it.y) < r.r + it.r) {
+        it.taken = true;
+        burstParticles(it.x, it.y, it.type === 'clone' ? '#d6bcfa' : '#feb2b2');
+        if (it.type === 'clone' && runners.length + newClones.length < 90) {
+          // 분신술! 1개 → 3개 (결과에는 가장 좋은 등수만 기록)
+          for (let k = 0; k < 2; k++) {
+            const c = new Runner(r.name, r.emoji, r.color, r.x + (k ? 26 : -26), r.y - 10);
+            c.r = r.r;
+            c.vx = r.vx + (k ? 160 : -160);
+            c.vy = r.vy - 120;
+            newClones.push(c);
+          }
+          beep(700, 0.18, 'triangle', 0.2);
+          beep(1050, 0.18, 'triangle', 0.2, 0.12);
+        } else if (it.type === 'grow') {
+          // 커지기! 좁은 틈은 못 지나갈 수도
+          r.r = Math.min(r.r * 1.35, 34);
+          beep(220, 0.25, 'sawtooth', 0.15);
+        }
+        break;
+      }
+    }
+  }
+  if (newClones.length) runners.push(...newClones);
+  items = items.filter(it => !it.taken);
+
+  for (const r of runners) {
+    if (r.finished) continue;
+    if (r.y > finishY) {
+      r.finished = true;
+      r.rank = ++finishedCount;
+      if (!uniqueFinish.includes(r.name)) uniqueFinish.push(r.name);
+      addRankLine(r);
+      beep(600, 0.15, 'triangle', 0.15);
+      // 1등이 들어오면 남은 아이템 제거 → 경기가 늘어지지 않게
+      if (finishedCount === 1) {
+        items.forEach(it => burstParticles(it.x, it.y, '#e2e8f0'));
+        items = [];
+      }
+      checkWinner();
+      if (finishedCount === runners.length) onAllFinished();
+      continue;
+    }
+    if (gateOpen && Math.hypot(r.vx, r.vy) < 14) {
+      r.stuckTime += dt;
+      if (r.stuckTime > 0.9) {
+        // 멈춰 있으면 세게 밀어주기 (방향은 번갈아 랜덤)
+        const dir = Math.random() < 0.5 ? -1 : 1;
+        r.vx += dir * (300 + Math.random() * 220);
+        r.vy -= 180 + Math.random() * 140;
+        r.stuckTime = 0;
+      }
+    } else r.stuckTime = 0;
+  }
+}
+
+// ==========================================================
+//  순위 / 당첨 / 최종 결과
+// ==========================================================
+function addRankLine(r) {
+  const li = document.createElement('li');
+  li.textContent = `${r.rank}. ${em(r)}${r.name}`;
+  const isWin = mode === 'first' && uniqueFinish.indexOf(r.name) < winnerCount;
+  if (isWin) { li.classList.add('winner-line'); li.textContent += ' ★'; }
+  rankList.appendChild(li);
+  rankList.parentElement.scrollTop = rankList.parentElement.scrollHeight;
+}
+
+function checkWinner() {
+  if (winnerDeclared) return;
+  const totalStudents = new Set(runners.map(r => r.name)).size;
+  const wanted = Math.min(winnerCount, totalStudents);
+  if (mode === 'first' && uniqueFinish.length >= wanted) {
+    raceWinners = uniqueFinish.slice(0, wanted);
+  } else if (mode === 'last' && finishedCount === runners.length) {
+    raceWinners = uniqueOrder().slice(-wanted).map(r => r.name);
+  } else return;
+  winnerDeclared = true;
+  showWinner(raceWinners);
+}
+
+function showWinner(names) {
+  const n = names.length;
+  $('winnerEmoji').textContent = (showChars && n === 1) ? (charMap[names[0]] || '🎉') : '🎉';
+  $('winnerLabel').textContent = mode === 'first'
+    ? (n === 1 ? '1등 당첨!' : `1등~${n}등 당첨!`)
+    : (n === 1 ? '꼴찌 당첨!' : `꼴찌 ${n}명 당첨!`);
+  const nameEl = $('winnerName');
+  nameEl.style.fontSize = n > 2 ? '30px' : n === 2 ? '42px' : '';
+  nameEl.innerHTML = names.map((nm, i) =>
+    `<span class="wn-line" style="animation-delay:${0.25 + i * 0.2}s">${showChars ? (charMap[nm] || '') + ' ' : ''}${nm}</span>`
+  ).join('');
+  $('winnerOverlay').style.display = 'flex';
+  [330, 392, 494].forEach((f, i) => beep(f, 0.09, 'square', 0.12, i * 0.08)); // 드럼롤
+  fanfare();
+  startConfetti();
+  // 두 번째 꽃가루 물결
+  setTimeout(() => { if ($('winnerOverlay').style.display === 'flex') startConfetti(); }, 1100);
+}
+
+// 학생별 최고 순위 기준 유니크 순서
+function uniqueOrder() {
+  const sorted = [...runners].filter(r => r.finished).sort((a, b) => a.rank - b.rank);
+  const seen = new Set(), out = [];
+  for (const r of sorted) {
+    if (!seen.has(r.name)) { seen.add(r.name); out.push(r); }
+  }
+  return out;
+}
+
+function onAllFinished() {
+  const tk = raceToken;
+  setTimeout(() => {
+    if (tk !== raceToken || resultShown) return;   // 그 사이 새 판이 시작됐으면 무시
+    $('winnerOverlay').style.display = 'none';
+    showResults();
+  }, 1200);
+}
+
+function showResults() {
+  resultShown = true;
+  stopBgm();
+  const order = uniqueOrder();
+  const cls = $('classInput').value.trim();
+  $('resultTitle').textContent = '최종 결과';
+  const modeTxt = mode === 'first' ? '1등' : '꼴찌';
+  $('resultSub').textContent = `${cls ? cls + ' · ' : ''}${currentMapName} · ${order.length}명 · ${modeTxt} ${raceWinners.length || winnerCount}명 당첨`;
+
+  // 시상대 (1~3등)
+  const podium = $('podium');
+  podium.innerHTML = '';
+  const podiumDef = [
+    { i: 1, h: 64, c: '#b8c2cc', label: '2' },
+    { i: 0, h: 90, c: '#f6cf3f', label: '1' },
+    { i: 2, h: 46, c: '#dd9a62', label: '3' },
+  ];
+  podiumDef.forEach(p => {
+    if (!order[p.i]) return;
+    const d = document.createElement('div');
+    d.className = 'podium-item';
+    const delay = p.label === '1' ? 0.5 : p.label === '2' ? 0.28 : 0.08;
+    d.innerHTML = `<div class="p-emoji">${showChars ? order[p.i].emoji : '🏅'}</div>
+      <div class="p-name">${order[p.i].name}</div>
+      <div class="p-block" style="height:${p.h}px;width:86px;background:${p.c};animation-delay:${delay}s">${p.label}</div>`;
+    podium.appendChild(d);
+  });
+
+  // 전체 순위
+  const grid = $('fullRankGrid');
+  grid.innerHTML = '';
+  order.forEach((r, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'rank-chip' + (i === 0 ? ' gold' : i === 1 ? ' silver' : i === 2 ? ' bronze' : '');
+    if (raceWinners.includes(r.name)) chip.classList.add('win');
+    chip.innerHTML = `<span class="rk">${i + 1}등</span> ${em(r)}${r.name}${raceWinners.includes(r.name) ? ' ★' : ''}`;
+    grid.appendChild(chip);
+  });
+
+  // 체크한 옵션만 표시 (기본은 추첨 결과만)
+  const useTeams = $('optTeams').checked;
+  const useSeats = $('optSeats').checked;
+  $('teamSection').style.display = useTeams ? 'block' : 'none';
+  $('seatSection').style.display = useSeats ? 'block' : 'none';
+  if (useTeams) { renderTeams(); updateTeamSizeButtons(); }
+  if (useSeats) { renderSeats(); updateSeatColButtons(); }
+  $('resultOverlay').style.display = 'block';
+}
+
+function updateTeamSizeButtons() {
+  document.querySelectorAll('.team-size-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.size) === teamSize));
+}
+document.querySelectorAll('.team-size-btn').forEach(b => {
+  b.onclick = () => {
+    teamSize = parseInt(b.dataset.size);
+    saveState({ teamSize });
+    updateTeamSizeButtons();
+    renderTeams();
+  };
+});
+
+function renderTeams() {
+  const order = uniqueOrder();
+  const wrap = $('teamWrap');
+  wrap.innerHTML = '';
+  for (let i = 0; i < order.length; i += teamSize) {
+    const members = order.slice(i, i + teamSize);
+    const card = document.createElement('div');
+    card.className = 'team-card';
+    const teamNo = Math.floor(i / teamSize) + 1;
+    card.innerHTML = `<h4>${teamNo}모둠</h4>
+      <div class="desks">${members.map(m => `<div class="desk">${em(m)}${m.name}</div>`).join('')}</div>`;
+    wrap.appendChild(card);
+  }
+}
+
+// ---------- 자리 배치 (도착 순서대로 교실 책상에 앉히기) ----------
+function updateSeatColButtons() {
+  document.querySelectorAll('.seat-col-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.cols) === seatCols));
+}
+document.querySelectorAll('.seat-col-btn').forEach(b => {
+  b.onclick = () => {
+    seatCols = parseInt(b.dataset.cols);
+    saveState({ seatCols });
+    updateSeatColButtons();
+    renderSeats();
+  };
+});
+function renderSeats() {
+  const order = uniqueOrder();
+  const grid = $('seatGrid');
+  grid.innerHTML = '';
+  grid.style.gridTemplateColumns = `repeat(${seatCols}, 1fr)`;
+  order.forEach((r, i) => {
+    const d = document.createElement('div');
+    d.className = 'desk';
+    d.textContent = `${i + 1}. ${r.name}`;
+    grid.appendChild(d);
+  });
+}
+
+$('copyResultBtn').onclick = () => {
+  const order = uniqueOrder();
+  const cls = $('classInput').value.trim();
+  let txt = `신답룰렛 결과${cls ? ' (' + cls + ')' : ''} — ${currentMapName}\n`;
+  txt += `당첨 방식: ${mode === 'first' ? '1등' : '꼴찌'} ${raceWinners.length || winnerCount}명 당첨\n`;
+  if (raceWinners.length) txt += `당첨: ${raceWinners.join(', ')}\n`;
+  txt += `\n[전체 순위]\n`;
+  order.forEach((r, i) => { txt += `${i + 1}등 ${r.name}\n`; });
+  if ($('optTeams').checked) {
+    txt += `\n[조(모둠) 배치 - ${teamSize}명씩]\n`;
+    for (let i = 0; i < order.length; i += teamSize) {
+      txt += `${Math.floor(i / teamSize) + 1}모둠: ${order.slice(i, i + teamSize).map(m => m.name).join(', ')}\n`;
+    }
+  }
+  if ($('optSeats').checked) {
+    txt += `\n[자리 배치 - 한 줄 ${seatCols}자리, 교탁에서 가까운 줄부터]\n`;
+    for (let i = 0; i < order.length; i += seatCols) {
+      txt += `${Math.floor(i / seatCols) + 1}째 줄: ${order.slice(i, i + seatCols).map(m => m.name).join(', ')}\n`;
+    }
+  }
+  navigator.clipboard.writeText(txt).then(
+    () => { $('copyResultBtn').textContent = '복사됨!'; setTimeout(() => { $('copyResultBtn').textContent = '결과 복사'; }, 1500); },
+    () => { alert('복사에 실패했어요. 브라우저 설정을 확인해 주세요.'); }
+  );
+};
+// ---------- 결과 이미지 저장 ----------
+$('saveImgBtn').onclick = () => {
+  const order = uniqueOrder();
+  const useTeams = $('optTeams').checked, useSeats = $('optSeats').checked;
+  const W = 1000, PAD = 48, COLW = (W - PAD * 2) / 4;
+  const FONT = '"Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif';
+  const rankRows = Math.ceil(order.length / 4);
+  let H = 210 + rankRows * 42 + 40;
+  const teamRows = useTeams ? Math.ceil(order.length / teamSize) : 0;
+  const seatRows = useSeats ? Math.ceil(order.length / seatCols) : 0;
+  if (useTeams) H += 64 + teamRows * 36;
+  if (useSeats) H += 64 + seatRows * 36;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  x.fillStyle = '#14171f';
+  x.fillRect(0, 0, W, H);
+  x.textAlign = 'center';
+  x.fillStyle = '#e8eaf0';
+  x.font = `800 34px ${FONT}`;
+  x.fillText('신답룰렛 최종 결과', W / 2, 70);
+  x.fillStyle = '#9aa3b2';
+  x.font = `500 16px ${FONT}`;
+  x.fillText($('resultSub').textContent + ' · ' + new Date().toLocaleDateString('ko-KR'), W / 2, 102);
+  if (raceWinners.length) {
+    x.fillStyle = '#fbbf24';
+    x.font = `700 22px ${FONT}`;
+    x.fillText('★ 당첨: ' + raceWinners.join(', '), W / 2, 148);
+  }
+  let yy = 200;
+  x.textAlign = 'left';
+  order.forEach((r, i) => {
+    const col = i % 4, row = Math.floor(i / 4);
+    const px = PAD + col * COLW, py = yy + row * 42;
+    x.fillStyle = raceWinners.includes(r.name) ? '#fbbf24' : (i < 3 ? '#cbd5e1' : '#8f98a8');
+    x.font = `600 13px ${FONT}`;
+    x.fillText(`${i + 1}등`, px, py);
+    x.fillStyle = raceWinners.includes(r.name) ? '#ffd76a' : '#e8eaf0';
+    x.font = `700 18px ${FONT}`;
+    x.fillText(`${em(r)}${r.name}${raceWinners.includes(r.name) ? ' ★' : ''}`, px + 44, py);
+  });
+  yy += rankRows * 42 + 30;
+  const section = (label) => {
+    x.fillStyle = '#9aa3b2';
+    x.font = `700 15px ${FONT}`;
+    x.textAlign = 'center';
+    x.fillText(label, W / 2, yy);
+    x.textAlign = 'left';
+    yy += 34;
+  };
+  if (useTeams) {
+    section('— 조(모둠) 배치 —');
+    for (let i = 0; i < order.length; i += teamSize) {
+      x.fillStyle = '#aab4ff';
+      x.font = `700 16px ${FONT}`;
+      x.fillText(`${Math.floor(i / teamSize) + 1}모둠`, PAD, yy);
+      x.fillStyle = '#e8eaf0';
+      x.font = `500 16px ${FONT}`;
+      x.fillText(order.slice(i, i + teamSize).map(m => m.name).join(', '), PAD + 76, yy);
+      yy += 36;
+    }
+    yy += 30;
+  }
+  if (useSeats) {
+    section('— 자리 배치 (교탁에서 가까운 줄부터) —');
+    for (let i = 0; i < order.length; i += seatCols) {
+      x.fillStyle = '#aab4ff';
+      x.font = `700 16px ${FONT}`;
+      x.fillText(`${Math.floor(i / seatCols) + 1}째 줄`, PAD, yy);
+      x.fillStyle = '#e8eaf0';
+      x.font = `500 16px ${FONT}`;
+      x.fillText(order.slice(i, i + seatCols).map(m => m.name).join(', '), PAD + 76, yy);
+      yy += 36;
+    }
+  }
+  const a = document.createElement('a');
+  a.download = `신답룰렛-결과-${new Date().toISOString().slice(0, 10)}.png`;
+  a.href = c.toDataURL('image/png');
+  a.click();
+  $('saveImgBtn').textContent = '저장됨!';
+  setTimeout(() => { $('saveImgBtn').textContent = '이미지 저장'; }, 1500);
+};
+
+$('resultWatchBtn').onclick = () => { $('resultOverlay').style.display = 'none'; };
+$('resultAgainBtn').onclick = () => { $('resultOverlay').style.display = 'none'; startRace(activeEntries()); };
+$('resultHomeBtn').onclick = () => { $('resultOverlay').style.display = 'none'; goHome(); };
+
+// ==========================================================
+//  카메라 & 렌더링
+// ==========================================================
+let camY = 0, camScale = 1;
+
+function focusRunner() {
+  const active = runners.filter(r => !r.finished);
+  if (!active.length) return null;
+  if (mode === 'last') return active.reduce((a, b) => (a.y < b.y ? a : b));
+  return active.reduce((a, b) => (a.y > b.y ? a : b));
+}
+
+function render() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  let offX = 0;
+
+  if (viewMode === 'all') {
+    // 전체 보기: 코스 전부가 한 화면에
+    camScale = Math.min(W / WORLD_W, H / (finishY + 780));
+    camY = -520;
+    offX = (W / camScale - WORLD_W) / 2;
+  } else {
+    camScale = (W / WORLD_W) * (viewMode === 'wide' ? 0.48 : 1);
+    offX = (W / camScale - WORLD_W) / 2;
+    const vh = H / camScale;
+    const focus = focusRunner();
+    let targetY = focus ? focus.y - vh * 0.42 : finishY - vh * 0.7;
+    targetY = Math.max(-450, Math.min(targetY, finishY + 200 - vh));
+    camY += (targetY - camY) * 0.08;
+  }
+  const viewH = H / camScale;
+
+  ctx.save();
+  ctx.scale(camScale, camScale);
+  ctx.translate(offX, -camY);
+
+  drawBackground(viewH);
+  drawMap();
+  drawParticles();
+  drawRunners();
+
+  ctx.restore();
+  drawProgressBar(W, H);
+}
+
+function drawBackground(viewH) {
+  const bg = currentBg || DEFAULT_BG;
+  // 맵마다 다른 배경 그라데이션
+  const g = ctx.createLinearGradient(0, -500, 0, finishY + 500);
+  g.addColorStop(0, bg.top);
+  g.addColorStop(1, bg.bottom);
+  ctx.fillStyle = g;
+  ctx.fillRect(-40, camY - 80, WORLD_W + 80, viewH + 160);
+  // 장식 이모지
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.globalAlpha = 0.85;
+  for (const d of decorations) {
+    if (d.y < camY - 80 || d.y > camY + viewH + 80) continue;
+    ctx.font = `${d.size}px sans-serif`;
+    ctx.fillText(d.emoji, d.x, d.y);
+  }
+  ctx.globalAlpha = 1;
+  // 구름 (밝은 하늘 맵만)
+  if (bg.cloud) {
+    ctx.fillStyle = T().cloud;
+    for (let i = 0; i < 16; i++) {
+      const cy = 300 + i * 420;
+      if (cy < camY - 100 || cy > camY + viewH + 100) continue;
+      const cx = 150 + ((i * 379) % (WORLD_W - 300));
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 70, 26, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + 45, cy + 8, 50, 20, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  // 결승선
+  ctx.save();
+  ctx.translate(0, finishY);
+  const cell = 20;
+  for (let x = 0; x < WORLD_W; x += cell) {
+    ctx.fillStyle = (x / cell) % 2 ? '#2d3748' : '#fff';
+    ctx.fillRect(x, -10, cell, 20);
+  }
+  ctx.fillStyle = '#d69e2e';
+  ctx.font = 'bold 40px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🏁 결승선 🏁', WORLD_W / 2, 70);
+  ctx.restore();
+}
+
+function drawMap() {
+  const th = T();
+  ctx.lineCap = 'round';
+  for (const w of walls) {
+    ctx.strokeStyle = th.wallOuter;
+    ctx.lineWidth = w.t + 6;
+    ctx.beginPath(); ctx.moveTo(w.x1, w.y1); ctx.lineTo(w.x2, w.y2); ctx.stroke();
+    ctx.strokeStyle = th.wallInner;
+    ctx.lineWidth = w.t;
+    ctx.beginPath(); ctx.moveTo(w.x1, w.y1); ctx.lineTo(w.x2, w.y2); ctx.stroke();
+  }
+  if (!gateOpen) {
+    for (const w of gateWalls) {
+      ctx.strokeStyle = '#e53e3e';
+      ctx.lineWidth = w.t;
+      ctx.setLineDash([16, 10]);
+      ctx.beginPath(); ctx.moveTo(w.x1, w.y1); ctx.lineTo(w.x2, w.y2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+  for (const p of pegs) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    if (theme === '3d' || theme === 'marble') {
+      const g = ctx.createRadialGradient(p.x - p.r * 0.35, p.y - p.r * 0.35, p.r * 0.15, p.x, p.y, p.r);
+      g.addColorStop(0, '#fff');
+      g.addColorStop(1, p.bouncy ? th.bumper : th.peg);
+      ctx.fillStyle = g;
+    } else {
+      ctx.fillStyle = p.bouncy ? th.bumper : th.peg;
+    }
+    ctx.fill();
+    ctx.strokeStyle = p.bouncy ? th.bumperLine : th.pegLine;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    if (p.bouncy) {
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${p.r}px sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('★', p.x, p.y + 1);
+    }
+  }
+  for (const s of spinners) {
+    for (const seg of s.segments()) {
+      ctx.strokeStyle = th.spinner;
+      ctx.lineWidth = s.t;
+      ctx.beginPath(); ctx.moveTo(seg.x1, seg.y1); ctx.lineTo(seg.x2, seg.y2); ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(s.cx, s.cy, 12, 0, Math.PI * 2);
+    ctx.fillStyle = th.spinnerHub;
+    ctx.fill();
+  }
+  // 픽셀 블록 (모여서 글자 모양)
+  for (const b of letters) {
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.roundRect(b.x, b.y, b.w, b.h, 4);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+  // 아이템
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const now = performance.now() / 1000;
+  for (const it of items) {
+    const bobY = Math.sin(now * 3 + it.bob) * 6;
+    ctx.save();
+    ctx.translate(it.x, it.y + bobY);
+    ctx.beginPath();
+    ctx.arc(0, 0, it.r + 6 + Math.sin(now * 5 + it.bob) * 3, 0, Math.PI * 2);
+    ctx.strokeStyle = it.type === 'clone' ? 'rgba(159,122,234,0.7)' : 'rgba(245,101,101,0.7)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = `${it.r * 1.6}px sans-serif`;
+    ctx.fillText(it.emoji, 0, 2);
+    ctx.restore();
+  }
+  // 트램펄린
+  for (const pd of pads) {
+    ctx.save();
+    ctx.translate(pd.x, pd.y);
+    // 다리
+    ctx.strokeStyle = '#8a5a2b';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(-pd.w / 2 + 14, 4); ctx.lineTo(-pd.w / 2 + 20, 26);
+    ctx.moveTo(pd.w / 2 - 14, 4); ctx.lineTo(pd.w / 2 - 20, 26);
+    ctx.stroke();
+    // 탄성판 (밟으면 눌렸다 펴진다)
+    const sq = pd.squish > 0 ? 1 + pd.squish * 1.5 : 1;
+    ctx.fillStyle = '#e8543f';
+    ctx.beginPath();
+    ctx.roundRect(-pd.w / 2, -6 * sq + (sq - 1) * 6, pd.w, 12 * sq, 6);
+    ctx.fill();
+    ctx.fillStyle = '#ffd27f';
+    ctx.beginPath();
+    ctx.roundRect(-pd.w / 2 + 8, -3, pd.w - 16, 5, 3);
+    ctx.fill();
+    // 위로 튀어오른다는 힌트 + 남은 횟수 (5→4→3→2→1)
+    const bounceT = performance.now() / 1000 * 3 + pd.x;
+    ctx.fillStyle = 'rgba(232,84,63,0.9)';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('⇧', -12, -22 - Math.abs(Math.sin(bounceT)) * 8);
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText(pd.left, 14, -24);
+    ctx.restore();
+  }
+  // 블랙홀
+  for (const h of holes) {
+    ctx.save();
+    ctx.translate(h.x, h.y);
+    const g = ctx.createRadialGradient(0, 0, 2, 0, 0, h.r * 2.4);
+    g.addColorStop(0, 'rgba(8,4,18,0.98)');
+    g.addColorStop(0.5, 'rgba(45,25,80,0.75)');
+    g.addColorStop(1, 'rgba(45,25,80,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, h.r * 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.rotate(now * 2.4 + h.phase);
+    ctx.strokeStyle = 'rgba(183,148,244,0.85)';
+    ctx.lineWidth = 3.5;
+    ctx.setLineDash([16, 12]);
+    ctx.beginPath(); ctx.arc(0, 0, h.r + 9, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+    // 위로 빨려 올라간다는 힌트 화살표
+    ctx.fillStyle = 'rgba(183,148,244,0.9)';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.fillText('▲', h.x, h.y - h.r - 24 - Math.sin(now * 3 + h.phase) * 6);
+    // 남은 횟수 (5→4→3→2→1)
+    ctx.fillStyle = '#e9d8fd';
+    ctx.font = 'bold 26px sans-serif';
+    ctx.fillText(h.left, h.x, h.y + 1);
+  }
+  // 적군
+  for (const e of enemies) {
+    ctx.save();
+    ctx.translate(e.x, e.y);
+    ctx.rotate(Math.sin(performance.now() / 150 + e.y) * 0.15);
+    ctx.font = `${e.r * 2.1}px sans-serif`;
+    ctx.fillText(e.emoji, 0, 2);
+    ctx.restore();
+  }
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    ctx.globalAlpha = Math.min(1, p.life);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.7);
+    ctx.restore();
+  }
+}
+
+function drawRunners() {
+  ctx.textAlign = 'center';
+  // 전체 보기처럼 축소된 화면에서는 최소 크기 보장 + 이름표 생략
+  const showNames = camScale >= 0.5;
+  const minR = 8 / camScale;
+  for (const r of runners) {
+    if (r.finished) continue;
+    const dr = Math.max(r.r, minR);
+
+    if (theme === 'marble') {
+      // 유리 구슬 스타일
+      const g = ctx.createRadialGradient(r.x - dr * 0.4, r.y - dr * 0.4, dr * 0.1, r.x, r.y, dr);
+      g.addColorStop(0, 'rgba(255,255,255,0.95)');
+      g.addColorStop(0.45, r.color);
+      g.addColorStop(1, shade(r.color, -40));
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, dr, 0, Math.PI * 2);
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      if (showChars) {
+        ctx.save();
+        ctx.globalAlpha = 0.8;
+        ctx.font = `${dr * 1.15}px sans-serif`;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(r.emoji, r.x, r.y + 1);
+        ctx.restore();
+      }
+    } else if (theme === '3d') {
+      // 입체 캐릭터 공
+      ctx.beginPath();
+      ctx.ellipse(r.x, r.y + dr * 0.9, dr * 0.85, dr * 0.3, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fill();
+      const g = ctx.createRadialGradient(r.x - dr * 0.35, r.y - dr * 0.35, dr * 0.15, r.x, r.y, dr);
+      g.addColorStop(0, '#ffffff');
+      g.addColorStop(0.5, r.color);
+      g.addColorStop(1, shade(r.color, -50));
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, dr, 0, Math.PI * 2);
+      ctx.fillStyle = g;
+      ctx.fill();
+      if (showChars) {
+        ctx.save();
+        ctx.translate(r.x, r.y);
+        ctx.rotate(Math.sin(r.spin) * 0.25);
+        ctx.font = `${dr * 1.45}px sans-serif`;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(r.emoji, 0, 1);
+        ctx.restore();
+      }
+    } else {
+      // 플랫
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, dr, 0, Math.PI * 2);
+      ctx.fillStyle = r.color;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      if (showChars) {
+        ctx.save();
+        ctx.translate(r.x, r.y);
+        ctx.rotate(Math.sin(r.spin) * 0.25);
+        ctx.font = `${dr * 1.5}px sans-serif`;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(r.emoji, 0, 1);
+        ctx.restore();
+      }
+    }
+
+    // 이름표 (축소 화면에서는 생략)
+    if (showNames) {
+      ctx.font = '600 13px "Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif';
+      const tw = ctx.measureText(r.name).width;
+      ctx.fillStyle = 'rgba(13,16,22,0.78)';
+      ctx.beginPath();
+      ctx.roundRect(r.x - tw / 2 - 7, r.y + dr + 4, tw + 14, 20, 10);
+      ctx.fill();
+      ctx.fillStyle = '#f2f4f8';
+      ctx.textBaseline = 'top';
+      ctx.fillText(r.name, r.x, r.y + dr + 8);
+    }
+  }
+}
+
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, Math.min(255, (n >> 16) + amt));
+  const g = Math.max(0, Math.min(255, ((n >> 8) & 0xff) + amt));
+  const b = Math.max(0, Math.min(255, (n & 0xff) + amt));
+  return `rgb(${r},${g},${b})`;
+}
+
+function drawProgressBar(W, H) {
+  const barX = W - 34, barTop = 70, barH = H - 140;
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(barX, barTop); ctx.lineTo(barX, barTop + barH); ctx.stroke();
+  ctx.strokeStyle = 'rgba(91,108,255,0.55)';
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(barX, barTop); ctx.lineTo(barX, barTop + barH); ctx.stroke();
+  ctx.font = '16px sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('🏁', barX, barTop + barH + 16);
+  for (const r of runners) {
+    if (r.finished) continue;
+    const prog = Math.max(0, Math.min(1, (r.y + 300) / (finishY + 300)));
+    if (showChars) {
+      ctx.fillText(r.emoji, barX, barTop + prog * barH);
+    } else {
+      ctx.beginPath();
+      ctx.arc(barX, barTop + prog * barH, 6, 0, Math.PI * 2);
+      ctx.fillStyle = r.color;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = '#2d3748';
+    }
+  }
+}
+
+// ---------- 폭죽 ----------
+let confetti = [], confettiRunning = false;
+function startConfetti() {
+  confetti = [];
+  for (let i = 0; i < 160; i++) {
+    confetti.push({
+      x: Math.random() * confettiCanvas.width,
+      y: -20 - Math.random() * confettiCanvas.height * 0.5,
+      vx: (Math.random() - 0.5) * 120,
+      vy: 120 + Math.random() * 180,
+      size: 6 + Math.random() * 8,
+      color: COLOR_POOL[i % COLOR_POOL.length],
+      rot: Math.random() * Math.PI,
+      vr: (Math.random() - 0.5) * 8
+    });
+  }
+  confettiRunning = true;
+}
+function stepConfetti(dt) {
+  if (!confettiRunning) return;
+  cctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+  let alive = 0;
+  for (const c of confetti) {
+    c.x += c.vx * dt; c.y += c.vy * dt; c.rot += c.vr * dt;
+    if (c.y < confettiCanvas.height + 30) alive++;
+    cctx.save();
+    cctx.translate(c.x, c.y);
+    cctx.rotate(c.rot);
+    cctx.fillStyle = c.color;
+    cctx.fillRect(-c.size / 2, -c.size / 2, c.size, c.size * 0.6);
+    cctx.restore();
+  }
+  if (!alive) { confettiRunning = false; cctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height); }
+}
+
+// ---------- 메인 루프 ----------
+let lastTime = 0, rafId = 0;
+function loop(ts) {
+  rafId = requestAnimationFrame(loop);
+  if (!lastTime) lastTime = ts;
+  let dt = Math.min(0.05, (ts - lastTime) / 1000);
+  lastTime = ts;
+  if (raceRunning) {
+    for (let i = 0; i < speedMult; i++) stepPhysics(DT);
+  }
+  render();
+  stepConfetti(dt);
+}
+
+// ---------- 화면 전환 / 버튼 ----------
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+
+$('startBtn').onclick = () => {
+  const entries = activeEntries();
+  const total = entries.reduce((a, e) => a + e.count, 0);
+  if (entries.length < 2) {
+    alert(excluded.length ? '제외를 빼면 참가자가 2명보다 적어요!' : '참가자를 2명 이상 적어주세요!');
+    return;
+  }
+  if (total > 60) { alert('캐릭터가 60개를 넘어요! 조금 줄여주세요.'); return; }
+  assignChars(entries.map(e => e.name));
+  startRace(entries);
+};
+
+function pickMap() {
+  const all = MAPS.concat(customMaps);
+  if (mapChoice === 'random') return all[Math.floor(Math.random() * all.length)];
+  return all.find(m => m.id === mapChoice) || MAPS[0];
+}
+
+function startRace(entries, forcedMap) {
+  setupScreen.style.display = 'none';
+  gameScreen.style.display = 'block';
+  $('winnerOverlay').style.display = 'none';
+  $('resultOverlay').style.display = 'none';
+  rankList.innerHTML = '';
+  resizeCanvas();
+  $('viewBtn').textContent = VIEW_LABELS[viewMode];
+  buildMap(forcedMap || pickMap());
+  spawnRunners(entries);
+  raceToken++;
+  finishedCount = 0;
+  uniqueFinish = [];
+  raceWinners = [];
+  winnerDeclared = false;
+  resultShown = false;
+  gateOpen = false;
+  speedMult = 1;
+  $('speedBtn').classList.remove('toggled');
+  camY = -300;
+  raceRunning = true;
+  lastTime = 0;
+  cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(loop);
+  beep(440, 0.15, 'sine', 0.2, 0);
+  beep(440, 0.15, 'sine', 0.2, 0.7);
+  beep(880, 0.4, 'sine', 0.25, 1.4);
+  startBgm();
+  setTimeout(() => { gateOpen = true; }, 1600);
+}
+
+$('speedBtn').onclick = () => {
+  speedMult = speedMult === 1 ? 4 : 1;
+  $('speedBtn').classList.toggle('toggled', speedMult === 4);
+};
+$('viewBtn').onclick = () => {
+  viewMode = viewMode === 'follow' ? 'wide' : viewMode === 'wide' ? 'all' : 'follow';
+  saveState({ viewMode });
+  $('viewBtn').textContent = VIEW_LABELS[viewMode];
+};
+$('skipBtn').onclick = () => {
+  if (!raceRunning) return;
+  gateOpen = true;
+  let guard = 60 * 180;
+  while (finishedCount < runners.length && guard-- > 0) stepPhysics(DT);
+  if (!resultShown) { $('winnerOverlay').style.display = 'none'; showResults(); }
+};
+$('homeBtn').onclick = goHome;
+$('toSetupBtn').onclick = goHome;
+function goHome() {
+  raceRunning = false;
+  stopBgm();
+  cancelAnimationFrame(rafId);
+  gameScreen.style.display = 'none';
+  setupScreen.style.display = 'flex';
+  $('resultOverlay').style.display = 'none';
+  renderCharGrid();
+  renderExcluded();
+}
+$('watchMoreBtn').onclick = () => { $('winnerOverlay').style.display = 'none'; };
+$('againBtn').onclick = () => { startRace(activeEntries()); };
+$('exclAgainBtn').onclick = excludeWinnersAndRestart;
+$('exclAgainBtn2').onclick = excludeWinnersAndRestart;
+
+// roundRect 폴리필
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+    this.moveTo(x + r, y);
+    this.arcTo(x + w, y, x + w, y + h, r);
+    this.arcTo(x + w, y + h, x, y + h, r);
+    this.arcTo(x, y + h, x, y, r);
+    this.arcTo(x, y, x + w, y, r);
+    this.closePath();
+    return this;
+  };
+}
+
+// ==========================================================
+//  맵 편집기
+// ==========================================================
+let customMaps = loadState().customMaps || [];
+const edCanvas = $('editorCanvas'), edx = edCanvas.getContext('2d');
+let edObjects = [], edHeight = 3500, edTool = 'peg', edCamY = -150, edEditingId = null;
+let edDrag = null;
+
+const ED_TOOLS = [
+  ['peg', '🔵 기둥'], ['bumper', '⭐ 별범퍼'],
+  ['spinner', '🌀 바람개비'], ['spinner3', '🌀 세날개'],
+  ['wall', '📏 벽 (드래그)'], ['letter', '🔤 글자 블록'],
+  ['enemy', '👾 적군'], ['hole', '🕳 블랙홀'],
+  ['pad', '⏫ 트램펄린'], ['move', '✋ 이동'],
+  ['erase', '🧽 지우개'],
+];
+(function initEditorUI() {
+  const tools = $('edTools');
+  ED_TOOLS.forEach(([k, label]) => {
+    const b = document.createElement('button');
+    b.className = 'ed-tool' + (k === edTool ? ' active' : '');
+    b.textContent = label;
+    b.dataset.tool = k;
+    b.onclick = () => {
+      edTool = k;
+      document.querySelectorAll('.ed-tool').forEach(x => x.classList.toggle('active', x.dataset.tool === k));
+    };
+    tools.appendChild(b);
+  });
+  const sel = $('edLetterSel');
+  for (let i = 0; i < 26; i++) {
+    const o = document.createElement('option');
+    o.textContent = String.fromCharCode(65 + i);
+    sel.appendChild(o);
+  }
+})();
+function updateLenButtons() {
+  document.querySelectorAll('.ed-len').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.len) === edHeight));
+}
+document.querySelectorAll('.ed-len').forEach(b => {
+  b.onclick = () => { edHeight = parseInt(b.dataset.len); updateLenButtons(); edDraw(); };
+});
+
+$('openEditorBtn').onclick = openEditor;
+function openEditor() {
+  setupScreen.style.display = 'none';
+  $('editorScreen').style.display = 'block';
+  refreshEdLoadSelect();
+  resizeEditor();
+  updateLenButtons();
+  edDraw();
+}
+$('edBackBtn').onclick = () => {
+  $('editorScreen').style.display = 'none';
+  setupScreen.style.display = 'flex';
+  renderMapGrid();
+};
+function resizeEditor() {
+  const wrap = $('editorCanvasWrap');
+  edCanvas.width = Math.max(300, Math.min(wrap.clientWidth - 20, 760));
+  edCanvas.height = wrap.clientHeight;
+}
+window.addEventListener('resize', () => {
+  if ($('editorScreen').style.display === 'block') { resizeEditor(); edDraw(); }
+});
+
+function refreshEdLoadSelect() {
+  const sel = $('edLoadSelect');
+  sel.innerHTML = '<option value="">-- 새 맵 --</option>';
+  if (customMaps.length) {
+    const og1 = document.createElement('optgroup');
+    og1.label = '내 맵';
+    customMaps.forEach(m => {
+      const o = document.createElement('option');
+      o.value = m.id; o.textContent = m.name;
+      og1.appendChild(o);
+    });
+    sel.appendChild(og1);
+  }
+  const og2 = document.createElement('optgroup');
+  og2.label = '기본 맵 (가져와서 고치기)';
+  MAPS.filter(m => m.secs !== 'shuffle').forEach(m => {
+    const o = document.createElement('option');
+    o.value = 'builtin:' + m.id; o.textContent = `${m.emoji} ${m.name}`;
+    og2.appendChild(o);
+  });
+  sel.appendChild(og2);
+  sel.value = edEditingId || '';
+}
+
+// 기본 맵을 편집 가능한 오브젝트로 변환해서 불러오기 (저장하면 "새 맵"으로 — 원본은 안 바뀜)
+function loadBuiltinIntoEditor(mapDef) {
+  buildMap(mapDef, true);
+  const rg = lastSectionRange, OY = 420;
+  const objs = [];
+  for (let i = rg.w0; i < rg.w1; i++) {
+    const w = walls[i];
+    objs.push({ type: 'wall', x: w.x1, y: w.y1 - OY, x2: w.x2, y2: w.y2 - OY });
+  }
+  for (let i = 0; i < rg.pegN; i++) {
+    const p = pegs[i];
+    objs.push({ type: p.bouncy ? 'bumper' : 'peg', x: p.x, y: p.y - OY });
+  }
+  for (let i = 0; i < rg.spinN; i++) {
+    const sp = spinners[i];
+    objs.push({ type: sp.arms === 3 ? 'spinner3' : 'spinner', x: sp.cx, y: sp.cy - OY, dir: sp.omega >= 0 ? 1 : -1 });
+  }
+  for (let i = 0; i < rg.enemyN; i++) {
+    const e = enemies[i];
+    objs.push({ type: 'enemy', x: e.x, y: e.y - OY, emoji: e.emoji, dir: e.vx >= 0 ? 1 : -1 });
+  }
+  letterLog.forEach(lg => objs.push({ type: 'letter', x: lg.cx, y: lg.ty + 56 - OY, ch: lg.ch }));
+  edObjects = objs;
+  edHeight = Math.max(2200, Math.round(rg.height));
+  edEditingId = null;                       // 다른 이름(새 맵) 저장이 기본
+  $('edName').value = mapDef.name + ' 커스텀';
+}
+
+$('edLoadSelect').onchange = () => {
+  const id = $('edLoadSelect').value;
+  if (!id) { edEditingId = null; edObjects = []; edHeight = 3500; $('edName').value = ''; }
+  else if (id.startsWith('builtin:')) {
+    const m = MAPS.find(x => 'builtin:' + x.id === id);
+    if (m) loadBuiltinIntoEditor(m);
+  } else {
+    const m = customMaps.find(x => x.id === id);
+    if (m) {
+      edEditingId = id;
+      edObjects = JSON.parse(JSON.stringify(m.objects));
+      edHeight = m.height;
+      $('edName').value = m.name;
+    }
+  }
+  edCamY = -150;
+  updateLenButtons(); edDraw();
+};
+
+function edPos(ev) {
+  const rect = edCanvas.getBoundingClientRect();
+  const s = edCanvas.width / WORLD_W;
+  return {
+    x: (ev.clientX - rect.left) * (edCanvas.width / rect.width) / s,
+    y: (ev.clientY - rect.top) * (edCanvas.height / rect.height) / s + edCamY
+  };
+}
+function edHit(p) {
+  for (let i = edObjects.length - 1; i >= 0; i--) {
+    const o = edObjects[i];
+    if (o.type === 'wall') {
+      const dx = o.x2 - o.x, dy = o.y2 - o.y;
+      const l2 = dx * dx + dy * dy;
+      let t = l2 ? ((p.x - o.x) * dx + (p.y - o.y) * dy) / l2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      if (Math.hypot(p.x - (o.x + dx * t), p.y - (o.y + dy * t)) < 18) return o;
+    } else if (o.type === 'letter') {
+      if (Math.abs(p.x - o.x) < 45 && Math.abs(p.y - o.y) < 56) return o;
+    } else {
+      const rad = (o.type === 'spinner' || o.type === 'spinner3') ? 34
+        : (o.type === 'bumper' || o.type === 'enemy' || o.type === 'hole') ? 32
+        : (o.type === 'pad') ? 58 : 18;
+      if (Math.hypot(p.x - o.x, p.y - o.y) < rad) return o;
+    }
+  }
+  return null;
+}
+
+edCanvas.addEventListener('mousedown', ev => {
+  const p = edPos(ev);
+  if (edTool === 'wall') { edDrag = { mode: 'wall', x: p.x, y: p.y, cx: p.x, cy: p.y }; return; }
+  if (edTool === 'move') {
+    const o = edHit(p);
+    if (o) edDrag = { mode: 'move', o, dx: p.x - o.x, dy: p.y - o.y,
+      w: o.type === 'wall' ? { dx2: o.x2 - o.x, dy2: o.y2 - o.y } : null };
+    return;
+  }
+  if (edTool === 'erase') {
+    const o = edHit(p);
+    if (o) { edObjects.splice(edObjects.indexOf(o), 1); edDraw(); }
+    return;
+  }
+  const x = Math.max(70, Math.min(WORLD_W - 70, p.x));
+  const y = Math.max(60, Math.min(edHeight - 60, p.y));
+  const dir = edObjects.length % 2 ? -1 : 1;
+  if (edTool === 'peg') edObjects.push({ type: 'peg', x, y });
+  else if (edTool === 'bumper') edObjects.push({ type: 'bumper', x, y });
+  else if (edTool === 'spinner') edObjects.push({ type: 'spinner', x, y, dir });
+  else if (edTool === 'spinner3') edObjects.push({ type: 'spinner3', x, y, dir });
+  else if (edTool === 'letter') edObjects.push({ type: 'letter', x, y, ch: $('edLetterSel').value });
+  else if (edTool === 'enemy') edObjects.push({ type: 'enemy', x, y, emoji: $('edEnemySel').value, dir });
+  else if (edTool === 'hole') edObjects.push({ type: 'hole', x, y });
+  else if (edTool === 'pad') edObjects.push({ type: 'pad', x, y });
+  edDraw();
+});
+edCanvas.addEventListener('mousemove', ev => {
+  if (!edDrag) return;
+  const p = edPos(ev);
+  if (edDrag.mode === 'wall') { edDrag.cx = p.x; edDrag.cy = p.y; }
+  else if (edDrag.mode === 'move') {
+    const o = edDrag.o;
+    o.x = p.x - edDrag.dx; o.y = p.y - edDrag.dy;
+    if (edDrag.w) { o.x2 = o.x + edDrag.w.dx2; o.y2 = o.y + edDrag.w.dy2; }
+  }
+  edDraw();
+});
+window.addEventListener('mouseup', ev => {
+  if (!edDrag) return;
+  if (edDrag.mode === 'wall') {
+    const len = Math.hypot(edDrag.cx - edDrag.x, edDrag.cy - edDrag.y);
+    if (len > 40) edObjects.push({ type: 'wall', x: edDrag.x, y: edDrag.y, x2: edDrag.cx, y2: edDrag.cy });
+  }
+  edDrag = null;
+  edDraw();
+});
+edCanvas.addEventListener('wheel', ev => {
+  ev.preventDefault();
+  const s = edCanvas.width / WORLD_W;
+  edCamY += ev.deltaY / s;
+  const viewH = edCanvas.height / s;
+  edCamY = Math.max(-250, Math.min(edCamY, edHeight - viewH + 400));
+  edDraw();
+}, { passive: false });
+
+function edDraw() {
+  const W = edCanvas.width, H = edCanvas.height;
+  const s = W / WORLD_W;
+  edx.clearRect(0, 0, W, H);
+  // 배경
+  edx.fillStyle = '#171b23';
+  edx.fillRect(0, 0, W, H);
+  edx.save();
+  edx.scale(s, s);
+  edx.translate(0, -edCamY);
+  const th = T();
+  // 격자
+  edx.strokeStyle = 'rgba(255,255,255,0.06)';
+  edx.lineWidth = 1.5;
+  for (let gy = 0; gy <= edHeight; gy += 250) {
+    edx.beginPath(); edx.moveTo(0, gy); edx.lineTo(WORLD_W, gy); edx.stroke();
+  }
+  // 좌우 외벽
+  edx.lineCap = 'round';
+  edx.strokeStyle = th.wallOuter;
+  edx.lineWidth = 14;
+  edx.beginPath(); edx.moveTo(L, -100); edx.lineTo(L, edHeight); edx.stroke();
+  edx.beginPath(); edx.moveTo(R, -100); edx.lineTo(R, edHeight); edx.stroke();
+  // 출발선
+  edx.strokeStyle = '#48bb78';
+  edx.lineWidth = 4;
+  edx.setLineDash([14, 10]);
+  edx.beginPath(); edx.moveTo(L, 0); edx.lineTo(R, 0); edx.stroke();
+  edx.setLineDash([]);
+  edx.fillStyle = '#6ee7a8';
+  edx.font = 'bold 30px sans-serif';
+  edx.textAlign = 'center';
+  edx.fillText('▼ 출발! 여기서 떨어져요', WORLD_W / 2, -30);
+  // 결승선
+  const cell = 20;
+  for (let x = 0; x < WORLD_W; x += cell) {
+    edx.fillStyle = (x / cell) % 2 ? '#2d3748' : '#fff';
+    edx.fillRect(x, edHeight - 10, cell, 20);
+  }
+  edx.fillStyle = '#d69e2e';
+  edx.font = 'bold 30px sans-serif';
+  edx.fillText('🏁 결승선', WORLD_W / 2, edHeight + 50);
+  // 오브젝트
+  edObjects.forEach(o => edDrawObj(o));
+  // 벽 드래그 미리보기
+  if (edDrag && edDrag.mode === 'wall') {
+    edx.strokeStyle = 'rgba(66,153,225,0.6)';
+    edx.lineWidth = 12;
+    edx.beginPath(); edx.moveTo(edDrag.x, edDrag.y); edx.lineTo(edDrag.cx, edDrag.cy); edx.stroke();
+  }
+  edx.restore();
+}
+function edDrawObj(o) {
+  const th = T();
+  edx.textAlign = 'center'; edx.textBaseline = 'middle';
+  if (o.type === 'peg') {
+    edx.beginPath(); edx.arc(o.x, o.y, 13, 0, Math.PI * 2);
+    edx.fillStyle = th.peg; edx.fill();
+    edx.strokeStyle = th.pegLine; edx.lineWidth = 3; edx.stroke();
+  } else if (o.type === 'bumper') {
+    edx.beginPath(); edx.arc(o.x, o.y, 26, 0, Math.PI * 2);
+    edx.fillStyle = th.bumper; edx.fill();
+    edx.strokeStyle = th.bumperLine; edx.lineWidth = 3; edx.stroke();
+    edx.fillStyle = '#fff'; edx.font = 'bold 26px sans-serif';
+    edx.fillText('★', o.x, o.y + 1);
+  } else if (o.type === 'spinner' || o.type === 'spinner3') {
+    const len = o.type === 'spinner' ? 130 : 150;
+    const arms = o.type === 'spinner' ? 2 : 3;
+    edx.strokeStyle = th.spinner; edx.lineWidth = 12; edx.lineCap = 'round';
+    for (let i = 0; i < arms; i++) {
+      const a = (Math.PI * i) / arms;
+      edx.beginPath();
+      edx.moveTo(o.x - Math.cos(a) * len, o.y - Math.sin(a) * len);
+      edx.lineTo(o.x + Math.cos(a) * len, o.y + Math.sin(a) * len);
+      edx.stroke();
+    }
+    edx.beginPath(); edx.arc(o.x, o.y, 12, 0, Math.PI * 2);
+    edx.fillStyle = th.spinnerHub; edx.fill();
+    edx.fillStyle = '#fff'; edx.font = 'bold 16px sans-serif';
+    edx.fillText(o.dir > 0 ? '↻' : '↺', o.x, o.y + 1);
+  } else if (o.type === 'wall') {
+    edx.strokeStyle = th.wallOuter; edx.lineWidth = 16; edx.lineCap = 'round';
+    edx.beginPath(); edx.moveTo(o.x, o.y); edx.lineTo(o.x2, o.y2); edx.stroke();
+    edx.strokeStyle = th.wallInner; edx.lineWidth = 10;
+    edx.beginPath(); edx.moveTo(o.x, o.y); edx.lineTo(o.x2, o.y2); edx.stroke();
+  } else if (o.type === 'letter') {
+    // 픽셀 블록 미리보기
+    const font = PIXEL_FONT[o.ch || 'A'];
+    const cell = 16;
+    const color = COLOR_POOL[(o.ch || 'A').charCodeAt(0) % COLOR_POOL.length];
+    if (font) {
+      edx.fillStyle = color;
+      font.forEach((line, ry) => {
+        [...line].forEach((c, cx) => {
+          if (c === '#') {
+            edx.beginPath();
+            edx.roundRect(o.x - cell * 2.5 + cx * cell, o.y - 56 + ry * cell, cell - 2, cell - 2, 3);
+            edx.fill();
+          }
+        });
+      });
+    }
+  } else if (o.type === 'hole') {
+    const g = edx.createRadialGradient(o.x, o.y, 2, o.x, o.y, 56);
+    g.addColorStop(0, 'rgba(8,4,18,0.98)');
+    g.addColorStop(0.55, 'rgba(45,25,80,0.7)');
+    g.addColorStop(1, 'rgba(45,25,80,0)');
+    edx.fillStyle = g;
+    edx.beginPath(); edx.arc(o.x, o.y, 56, 0, Math.PI * 2); edx.fill();
+    edx.strokeStyle = 'rgba(183,148,244,0.85)'; edx.lineWidth = 3;
+    edx.setLineDash([10, 8]);
+    edx.beginPath(); edx.arc(o.x, o.y, 32, 0, Math.PI * 2); edx.stroke();
+    edx.setLineDash([]);
+    edx.fillStyle = '#e9d8fd'; edx.font = 'bold 24px sans-serif';
+    edx.fillText('5', o.x, o.y + 1);
+  } else if (o.type === 'pad') {
+    edx.fillStyle = '#e8543f';
+    edx.beginPath(); edx.roundRect(o.x - 65, o.y - 6, 130, 12, 6); edx.fill();
+    edx.fillStyle = '#ffd27f';
+    edx.beginPath(); edx.roundRect(o.x - 57, o.y - 3, 114, 5, 3); edx.fill();
+    edx.fillStyle = 'rgba(232,84,63,0.95)'; edx.font = 'bold 20px sans-serif';
+    edx.fillText('⇧', o.x, o.y - 20);
+  } else if (o.type === 'enemy') {
+    edx.font = '52px sans-serif';
+    edx.fillText(o.emoji || '👾', o.x, o.y + 2);
+    // 순찰 범위 표시
+    edx.strokeStyle = 'rgba(229,62,62,0.35)';
+    edx.lineWidth = 3;
+    edx.setLineDash([8, 6]);
+    edx.beginPath();
+    edx.moveTo(Math.max(L + 60, o.x - 160), o.y);
+    edx.lineTo(Math.min(R - 60, o.x + 160), o.y);
+    edx.stroke();
+    edx.setLineDash([]);
+  }
+}
+
+// ---------- 맵 파일 내보내기 / 가져오기 ----------
+$('edExportBtn').onclick = () => {
+  if (!edObjects.length) { alert('내보낼 장애물이 없어요!'); return; }
+  const name = $('edName').value.trim() || '나만의 맵';
+  const data = { app: 'sindap-roulette-map', version: 1, name, height: edHeight, objects: edObjects };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.download = `신답룰렛-맵-${name}.json`;
+  a.href = URL.createObjectURL(blob);
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+$('edImportBtn').onclick = () => $('edImportFile').click();
+$('edImportFile').onchange = () => {
+  const file = $('edImportFile').files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!Array.isArray(data.objects) || !data.objects.length) throw new Error('bad');
+      edObjects = data.objects;
+      edHeight = Math.max(1000, Math.min(20000, parseInt(data.height) || 3500));
+      edEditingId = null;   // 가져온 맵은 새 맵으로 저장
+      $('edName').value = (data.name || '가져온 맵') + '';
+      edCamY = -150;
+      refreshEdLoadSelect();
+      updateLenButtons();
+      edDraw();
+    } catch (e) {
+      alert('맵 파일을 읽을 수 없어요. 신답룰렛에서 내보낸 .json 파일인지 확인해 주세요.');
+    }
+  };
+  reader.readAsText(file);
+  $('edImportFile').value = '';
+};
+
+$('edUndoBtn').onclick = () => { edObjects.pop(); edDraw(); };
+$('edClearBtn').onclick = () => {
+  if (confirm('놓은 장애물을 전부 지울까요?')) { edObjects = []; edDraw(); }
+};
+$('edSaveBtn').onclick = () => {
+  const name = $('edName').value.trim() || '나만의 맵';
+  const objects = edObjects.filter(o => (o.type === 'wall' ? Math.max(o.y, o.y2) : o.y) <= edHeight);
+  if (!objects.length) { alert('장애물을 하나 이상 놓아주세요!'); return; }
+  if (edEditingId && customMaps.find(x => x.id === edEditingId)) {
+    Object.assign(customMaps.find(x => x.id === edEditingId), { name, height: edHeight, objects });
+  } else {
+    edEditingId = 'cm' + Date.now();
+    customMaps.push({ id: edEditingId, name, emoji: '🛠', custom: true, height: edHeight, objects });
+  }
+  saveState({ customMaps });
+  refreshEdLoadSelect();
+  $('edSaveBtn').textContent = '저장됨!';
+  setTimeout(() => { $('edSaveBtn').textContent = '맵 저장'; }, 1200);
+};
+$('edTestBtn').onclick = () => {
+  const entries = activeEntries();
+  if (entries.length < 2) { alert('먼저 처음 화면에서 참가자를 2명 이상 적어주세요!'); return; }
+  if (!edObjects.length) { alert('장애물을 하나 이상 놓아주세요!'); return; }
+  assignChars(entries.map(e => e.name));
+  $('editorScreen').style.display = 'none';
+  startRace(entries, { id: 'edtest', name: $('edName').value.trim() || '테스트 맵', emoji: '🛠', custom: true, height: edHeight, objects: edObjects });
+};
+
+resizeCanvas();
+renderCharGrid();
+renderMapGrid();
+</script>
+</body>
+</html>
