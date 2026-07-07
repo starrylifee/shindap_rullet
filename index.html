@@ -1400,10 +1400,11 @@ function buildFinish(style, fy) {
     spinners.push(new Spinner(450, fy + 80, 120, 2.2, 2, 14, 3));
   } else if (style === 'moving') {
     // 넓은 깔때기 아래, 좌우로 왕복하는 문틈으로만 들어갈 수 있다
+    // 바닥은 문틈 쪽으로 기울어져 구슬이 저절로 굴러 들어간다 (평평하면 끝에서 멈춰버림)
     walls.push(new Wall(L, fy, 280, fy + 240));
     walls.push(new Wall(R, fy, 620, fy + 240));
     movingGate = { y: fy + 400, x: 450, gapW: 170, dir: 1, speed: 170,
-                   min: 180, max: WORLD_W - 180, t: 14 };
+                   min: 100, max: WORLD_W - 100, t: 14, tilt: 90 };
   } else if (style === 'corner') {
     // 오른쪽에서 왼쪽 구석으로 내려가는 외길 — 바람개비 숲을 뚫고 가야 한다
     walls.push(new Wall(R, fy, L + 150, fy + 330));
@@ -1776,10 +1777,12 @@ function renderMinimap() {
   }
   // 움직이는 도착문
   if (movingGate) {
-    mx.fillStyle = th.wallOuter;
     const g = movingGate;
-    mx.fillRect(0, g.y - 17, g.x - g.gapW / 2, 34);
-    mx.fillRect(g.x + g.gapW / 2, g.y - 17, WORLD_W - g.x - g.gapW / 2, 34);
+    mx.strokeStyle = th.wallOuter;
+    mx.beginPath();
+    mx.moveTo(0, g.y - g.tilt); mx.lineTo(g.x - g.gapW / 2, g.y);
+    mx.moveTo(g.x + g.gapW / 2, g.y); mx.lineTo(WORLD_W, g.y - g.tilt);
+    mx.stroke();
   }
   // 결승선
   for (let x = 0; x < WORLD_W; x += 60) {
@@ -2038,11 +2041,11 @@ function stepPhysics(dt) {
       // 사라지는 바닥: 닫혀 있을 때만 밟을 수 있다
       for (const tw of traps) if (!tw.open) collideSegment(r, tw.x1, tw.y1, tw.x2, tw.y2, tw.t);
       if (!gateOpen) for (const w of gateWalls) collideSegment(r, w.x1, w.y1, w.x2, w.y2, w.t);
-      // 움직이는 도착문: 문틈을 뺀 좌우 바닥이 좌우로 왕복한다
+      // 움직이는 도착문: 문틈을 뺀 좌우 바닥이 좌우로 왕복 (바깥쪽이 높아 문틈으로 굴러온다)
       if (movingGate) {
         const g = movingGate, sv = g.dir * g.speed;
-        collideSegment(r, -40, g.y, g.x - g.gapW / 2, g.y, g.t, sv, 0);
-        collideSegment(r, g.x + g.gapW / 2, g.y, WORLD_W + 40, g.y, g.t, sv, 0);
+        collideSegment(r, -40, g.y - g.tilt, g.x - g.gapW / 2, g.y, g.t, sv, 0);
+        collideSegment(r, g.x + g.gapW / 2, g.y, WORLD_W + 40, g.y - g.tilt, g.t, sv, 0);
       }
       // 트램펄린: 떨어지면서 밟았을 때만 강하게 위로 발사 (밑에서 올라올 땐 통과)
       for (const pd of pads) {
@@ -2597,16 +2600,16 @@ function drawMap() {
       ctx.setLineDash([]);
     }
   }
-  // 움직이는 도착문
+  // 움직이는 도착문 (바깥쪽이 높은 경사 바닥)
   if (movingGate) {
     const g = movingGate, gl = g.x - g.gapW / 2, gr = g.x + g.gapW / 2;
-    for (const [x1, x2] of [[-40, gl], [gr, WORLD_W + 40]]) {
+    for (const [x1, y1, x2, y2] of [[-40, g.y - g.tilt, gl, g.y], [gr, g.y, WORLD_W + 40, g.y - g.tilt]]) {
       ctx.strokeStyle = th.wallOuter;
       ctx.lineWidth = g.t + 6;
-      ctx.beginPath(); ctx.moveTo(x1, g.y); ctx.lineTo(x2, g.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
       ctx.strokeStyle = th.wallInner;
       ctx.lineWidth = g.t;
-      ctx.beginPath(); ctx.moveTo(x1, g.y); ctx.lineTo(x2, g.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     }
     // 문틈 위치 표시
     ctx.fillStyle = '#48bb78';
