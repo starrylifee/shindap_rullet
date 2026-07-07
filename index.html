@@ -442,6 +442,12 @@
           <span id="winnerCountLabel" style="font-size:20px; font-weight:700; min-width:48px; text-align:center;">1명</span>
           <button class="small-btn" id="winnerPlus" style="font-size:18px; padding:2px 14px;">＋</button>
         </div>
+        <div class="btn-row" style="align-items:center; margin-top:10px;" id="winnerStartRow">
+          <span style="font-size:17px; font-weight:700;">시작 등수</span>
+          <button class="small-btn" id="winnerStartMinus" style="font-size:18px; padding:2px 14px;">−</button>
+          <span id="winnerStartLabel" style="font-size:20px; font-weight:700; min-width:64px; text-align:center;">1등부터</span>
+          <button class="small-btn" id="winnerStartPlus" style="font-size:18px; padding:2px 14px;">＋</button>
+        </div>
       </div>
       <div>
         <label class="section-label">그림 스타일</label>
@@ -622,6 +628,7 @@ const rankList = $('rankList');
 
 let mode = 'first';
 let winnerCount = 1;
+let winnerStart = 1;   // 당첨 시작 등수 (1이면 기존과 동일, 2면 "2등부터 N명")
 let theme = 'flat';
 let soundOn = true;
 let bgmOn = true;
@@ -632,8 +639,8 @@ let mapChoice = 'random';
 let teamSize = 5;
 let seatCols = 5;
 let showChars = true;
-let viewMode = 'wide';   // follow(표준) | wide(와이드) | all(전체)
-const VIEW_LABELS = { follow: '표준', wide: '와이드', all: '전체' };
+let viewMode = 'wide';   // wide(표준·기본) | follow(줌) | all(전체)
+const VIEW_LABELS = { follow: '줌', wide: '표준', all: '전체' };
 
 // ==========================================================
 //  테마
@@ -657,6 +664,7 @@ function T() { return THEMES[theme] || THEMES.flat; }
   if (s.names) nameInput.value = s.names;
   if (s.mode) mode = s.mode;
   if (s.winnerCount) winnerCount = s.winnerCount;
+  if (s.winnerStart) winnerStart = s.winnerStart;
   if (s.charMap) charMap = s.charMap;
   if (typeof s.soundOn === 'boolean') soundOn = s.soundOn;
   if (typeof s.bgmOn === 'boolean') bgmOn = s.bgmOn;
@@ -717,9 +725,14 @@ function excludeWinnersAndRestart() {
   startRace(entries);
 }
 
-function updateWinnerCountLabel() { $('winnerCountLabel').textContent = winnerCount + '명'; }
+function updateWinnerCountLabel() {
+  $('winnerCountLabel').textContent = winnerCount + '명';
+  $('winnerStartLabel').textContent = winnerStart + '등부터';
+}
 $('winnerMinus').onclick = () => { winnerCount = Math.max(1, winnerCount - 1); saveState({ winnerCount }); updateWinnerCountLabel(); };
 $('winnerPlus').onclick = () => { winnerCount = Math.min(20, winnerCount + 1); saveState({ winnerCount }); updateWinnerCountLabel(); };
+$('winnerStartMinus').onclick = () => { winnerStart = Math.max(1, winnerStart - 1); saveState({ winnerStart }); updateWinnerCountLabel(); };
+$('winnerStartPlus').onclick = () => { winnerStart = Math.min(30, winnerStart + 1); saveState({ winnerStart }); updateWinnerCountLabel(); };
 
 function updateCharsButtons() {
   $('charsOnBtn').classList.toggle('active', showChars);
@@ -815,6 +828,8 @@ $('shuffleCharBtn').onclick = () => {
 function updateModeButtons() {
   $('modeFirst').classList.toggle('active', mode === 'first');
   $('modeLast').classList.toggle('active', mode === 'last');
+  // 시작 등수는 1등 모드에서만 의미가 있다
+  $('winnerStartRow').style.display = mode === 'first' ? 'flex' : 'none';
 }
 $('modeFirst').onclick = () => { mode = 'first'; saveState({ mode }); updateModeButtons(); };
 $('modeLast').onclick = () => { mode = 'last'; saveState({ mode }); updateModeButtons(); };
@@ -1152,30 +1167,30 @@ function secGates(y, rows = 3) {
 // ==========================================================
 //  맵 10종
 // ==========================================================
+// 각 맵은 시그니처 섹션 위주로 구성 + 도착문 스타일(finish)도 맵 개성의 일부
+// finish: center(중앙 깔때기) | sides(양옆 두 문) | moving(움직이는 문) | corner(왼쪽 구석)
 const MAPS = [
-  { id: 'classic',  name: '클래식 콩콩숲', emoji: '🌳', secs: ['pegs6', 'zigzag', 'spinners', 'pegs4', 'bumpers', 'ramps', 'pegs4'],
+  { id: 'classic',  name: '클래식 콩콩숲', emoji: '🌳', secs: ['pegs6', 'pegs4', 'pegs6', 'bumpers', 'pegs6', 'pegs4'], finish: 'center',
     bg: { top: '#9fdcaa', bottom: '#e8f8d8', deco: ['🌲','🌳','🍄','🌼','🐿️'], cloud: true } },
-  { id: 'windmill', name: '바람개비 왕국', emoji: '🌀', secs: ['spinners', 'pegs4', 'spinnersBig', 'ramps', 'bumpers', 'spinners', 'pegs3'],
+  { id: 'windmill', name: '바람개비 왕국', emoji: '🌀', secs: ['spinners', 'spinnersBig', 'pegs3', 'spinners', 'spinnersBig', 'spinners'], finish: 'center',
     bg: { top: '#c3b3f2', bottom: '#f2ebff', deco: ['🎡','🌷','🦋','🌀'], cloud: true } },
-  { id: 'letters',  name: '학교이름 깨기', emoji: '🔤', secs: ['letters', 'pegs3', 'letters', 'zigzag', 'letters', 'ramps', 'letters'],
+  { id: 'letters',  name: '학교이름 깨기', emoji: '🔤', secs: ['letters', 'pegs3', 'letters', 'zigzag', 'letters', 'ramps', 'letters'], finish: 'corner',
     bg: { top: '#2e6b50', bottom: '#47936f', deco: ['✏️','📚','🎒','🏫','📐'] } },
-  { id: 'alien',    name: '외계인 침공',   emoji: '👾', secs: ['pegs3', 'enemiesA', 'zigzag', 'enemiesA', 'pegs3', 'enemiesA', 'ramps'],
+  { id: 'alien',    name: '외계인 침공',   emoji: '👾', secs: ['pegs3', 'enemiesA', 'zigzag', 'enemiesA', 'pegs3', 'enemiesA', 'ramps'], finish: 'moving',
     bg: { top: '#0d0d33', bottom: '#31315e', deco: ['⭐','🪐','🛸','✨','🌟','🌙'] } },
-  { id: 'slide',    name: '지그재그 미끄럼틀', emoji: '🛝', secs: ['zigzag', 'ramps', 'zigzag', 'ramps', 'zigzag', 'ramps', 'zigzag'],
+  { id: 'slide',    name: '지그재그 미끄럼틀', emoji: '🛝', secs: ['zigzag', 'ramps', 'zigzag', 'ramps', 'zigzag', 'ramps', 'zigzag'], finish: 'sides',
     bg: { top: '#ffd28f', bottom: '#fff4d8', deco: ['☀️','🛝','⚽','🌈','🪁'], cloud: true } },
-  { id: 'bumper',   name: '슈퍼 튕튕 나라', emoji: '⭐', secs: ['bumpers', 'pegs6', 'bumpers', 'zigzag', 'bumpers', 'ramps', 'bumpers'],
+  { id: 'bumper',   name: '슈퍼 튕튕 나라', emoji: '⭐', secs: ['bumpers', 'pegs6', 'bumpers', 'zigzag', 'bumpers', 'ramps', 'bumpers'], finish: 'sides',
     bg: { top: '#ffbcd9', bottom: '#ffeaf4', deco: ['🍭','🍬','🧁','🍩','🍪'] } },
-  { id: 'gates',    name: '좁은 문 대작전', emoji: '🚪', secs: ['gates', 'pegs4', 'gates', 'spinners', 'gates', 'ramps', 'gates'],
+  { id: 'gates',    name: '좁은 문 대작전', emoji: '🚪', secs: ['gates', 'pegs4', 'gates', 'spinners', 'gates', 'ramps', 'gates'], finish: 'moving',
     bg: { top: '#b9c3d4', bottom: '#e6eaf2', deco: ['🏰','🛡️','🚩','⚔️'] } },
-  { id: 'dino',     name: '공룡 동굴 탐험', emoji: '🦖', secs: ['zigzag', 'enemiesB', 'pegs3', 'enemiesB', 'ramps', 'enemiesB', 'pegs3'],
-    bg: { top: '#4d3c29', bottom: '#7d654a', deco: ['🌋','🦴','🌿','🪨','🥚'] } },
-  { id: 'vortex',   name: '회오리 소용돌이', emoji: '🌪', secs: ['pegs3', 'vortex', 'serpentine', 'vortex', 'pegs3'],
+  { id: 'vortex',   name: '회오리 소용돌이', emoji: '🌪', secs: ['vortex', 'pegs3', 'vortex', 'spinners', 'vortex'], finish: 'center',
     bg: { top: '#1f3a5c', bottom: '#3f6d8e', deco: ['🌪','🌀','💨','🍃','☁️'] } },
-  { id: 'snake',    name: '좌우 뱀길',      emoji: '🐍', secs: ['serpentine', 'pegs3', 'serpentine', 'bumpers', 'serpentine', 'spinners'],
+  { id: 'snake',    name: '좌우 뱀길',      emoji: '🐍', secs: ['serpentine', 'pegs3', 'serpentine', 'bumpers', 'serpentine', 'serpentine'], finish: 'corner',
     bg: { top: '#7fb069', bottom: '#d8f3c1', deco: ['🐍','🌿','🍀','🐛','🌾'], cloud: true } },
-  { id: 'mix',      name: '뒤죽박죽 랜덤',  emoji: '🎲', secs: 'shuffle',
+  { id: 'mix',      name: '뒤죽박죽 랜덤',  emoji: '🎲', secs: 'shuffle', finish: 'shuffle',
     bg: { top: '#ffe29a', bottom: '#c4f0ff', deco: ['🎲','❓','🎈','🎪','🎁'], cloud: true } },
-  { id: 'full',     name: '풀코스 마라톤',  emoji: '🏃', secs: ['pegs4', 'zigzag', 'letters', 'spinners', 'enemiesA', 'gates', 'bumpers', 'ramps', 'pegs4'],
+  { id: 'full',     name: '풀코스 마라톤',  emoji: '🏃', secs: ['pegs4', 'zigzag', 'letters', 'spinners', 'enemiesA', 'gates', 'bumpers', 'ramps', 'pegs4'], finish: 'moving',
     bg: { top: '#93d4ff', bottom: '#ffd9ec', deco: ['🏁','🎯','🌈','⭐','🔥'], cloud: true } },
 ];
 const DEFAULT_BG = { top: '#aee3ff', bottom: '#eafaf1', deco: ['🌼','🦋','🌈'], cloud: true };
@@ -1261,9 +1276,47 @@ function makeReachable(visited) {
   };
 }
 
+// 움직이는 도착문 (moving 스타일일 때만 사용)
+let movingGate = null;
+
+// 도착문 스타일별 결승 구간 생성
+function buildFinish(style, fy) {
+  if (style === 'sides') {
+    // 가운데 쐐기가 길을 막아 양옆 두 문으로 갈라진다
+    walls.push(new Wall(450, fy - 40, 170, fy + 300));
+    walls.push(new Wall(450, fy - 40, 730, fy + 300));
+    walls.push(new Wall(170, fy + 300, 170, fy + 450));
+    walls.push(new Wall(730, fy + 300, 730, fy + 450));
+    // 쐐기 위 회전 장치가 구슬을 좌우로 갈라준다
+    spinners.push(new Spinner(450, fy + 80, 120, 2.2, 2, 14, 3));
+  } else if (style === 'moving') {
+    // 넓은 깔때기 아래, 좌우로 왕복하는 문틈으로만 들어갈 수 있다
+    walls.push(new Wall(L, fy, 280, fy + 240));
+    walls.push(new Wall(R, fy, 620, fy + 240));
+    movingGate = { y: fy + 400, x: 450, gapW: 170, dir: 1, speed: 170,
+                   min: 180, max: WORLD_W - 180, t: 14 };
+  } else if (style === 'corner') {
+    // 오른쪽 벽에서 왼쪽 구석으로 미끄러져 내려가는 외길
+    walls.push(new Wall(R, fy, L + 150, fy + 330));
+    walls.push(new Wall(L + 150, fy + 330, L + 150, fy + 470));
+    // 문 앞에서 휘젓는 작은 회전 장치
+    spinners.push(new Spinner(L + 220, fy + 140, 90, 2.6, 2, 12, 3));
+  } else {
+    // center: 중앙 깔때기 (회전 장치가 휘저어서 바로 못 들어감)
+    walls.push(new Wall(L, fy, 380, fy + 300));
+    walls.push(new Wall(R, fy, 520, fy + 300));
+    walls.push(new Wall(380, fy + 300, 380, fy + 450));
+    walls.push(new Wall(520, fy + 300, 520, fy + 450));
+    // 결승 앞 회전 장치: 3바퀴마다 좌↔우 방향 전환 → 한쪽 학생만 막히지 않게
+    spinners.push(new Spinner(450, fy + 120, 150, 2.0, 2, 14, 3));
+  }
+  finishY = fy + 600;
+}
+
 function buildMap(mapDef, previewOnly) {
   walls = []; pegs = []; spinners = []; letters = []; enemies = []; particles = []; items = []; holes = []; pads = [];
   letterLog = [];
+  movingGate = null;
 
   // 출발 깔때기 + 문
   walls.push(new Wall(L, 120, 330, 330));
@@ -1307,15 +1360,14 @@ function buildMap(mapDef, previewOnly) {
     height: y - 420
   };
 
-  // 마지막 깔때기 → 결승선 (회전 장치가 휘저어서 바로 못 들어감)
+  // 마지막 관문 → 결승선. 도착문 스타일은 맵 개성의 일부
   const fy = y + 80;
-  walls.push(new Wall(L, fy, 380, fy + 300));
-  walls.push(new Wall(R, fy, 520, fy + 300));
-  walls.push(new Wall(380, fy + 300, 380, fy + 450));
-  walls.push(new Wall(520, fy + 300, 520, fy + 450));
-  // 결승 앞 회전 장치: 3바퀴마다 좌↔우 방향 전환 → 한쪽 학생만 막히지 않게
-  spinners.push(new Spinner(450, fy + 120, 150, 2.0, 2, 14, 3));
-  finishY = fy + 600;
+  let fstyle = mapDef.finish || 'center';
+  if (fstyle === 'shuffle') {
+    const fs = ['center', 'sides', 'moving', 'corner'];
+    fstyle = fs[Math.floor(Math.random() * fs.length)];
+  }
+  buildFinish(fstyle, fy);
 
   // 좌우 외벽
   walls.push(new Wall(L, 120, L, fy + 10));
@@ -1382,6 +1434,24 @@ function buildMap(mapDef, previewOnly) {
       if (pads.some(pd => Math.hypot(pd.x - px, pd.y - py) < 380)) continue;
       pads.push(new Pad(px, py));
       pPlaced++;
+    }
+
+    // 콤보 존: 블랙홀 사거리 바로 아래에 트램펄린 1개를 의도 배치
+    // → 튕겨 오른 구슬이 블랙홀 근처를 배회하는 스릴 구간 (맵당 1곳, 결승 근처 제외)
+    if (!manualPads && !manualHoles) {
+      const combo = holes.filter(h => h.y > 1200 && h.y < fy - 1200)
+        .sort(() => Math.random() - 0.5);
+      outer: for (const h of combo) {
+        for (let t = 0; t < 50; t++) {
+          const px = h.x + (Math.random() < 0.5 ? -1 : 1) * (40 + Math.random() * 110);
+          const py = h.y + 250 + Math.random() * 90;
+          if (px < L + 120 || px > R - 120) continue;
+          if (!spotClear(px, py, 70)) continue;
+          if (!reachable(px, py, 2)) continue;
+          pads.push(new Pad(px, py));
+          break outer;
+        }
+      }
     }
   }
 
@@ -1496,6 +1566,13 @@ function renderMinimap() {
   mx.fillStyle = '#e8543f';
   for (const pd of pads) {
     mx.fillRect(pd.x - pd.w / 2 - 10, pd.y - 16, pd.w + 20, 32);
+  }
+  // 움직이는 도착문
+  if (movingGate) {
+    mx.fillStyle = th.wallOuter;
+    const g = movingGate;
+    mx.fillRect(0, g.y - 17, g.x - g.gapW / 2, 34);
+    mx.fillRect(g.x + g.gapW / 2, g.y - 17, WORLD_W - g.x - g.gapW / 2, 34);
   }
   // 결승선
   for (let x = 0; x < WORLD_W; x += 60) {
@@ -1649,6 +1726,7 @@ const SUBSTEPS = 3;
 let finishedCount = 0;
 let uniqueFinish = [];   // 학생(이름) 단위 도착 순서
 let raceWinners = [];    // 이번 판 당첨자 이름들
+let raceWinStartRank = 1; // 당첨 구간이 시작되는 등수 (표시용)
 let raceToken = 0;       // 판 구분용 (지연 콜백이 다음 판을 침범하지 않게)
 let raceRunning = false;
 let winnerDeclared = false;
@@ -1668,6 +1746,11 @@ function stepPhysics(dt) {
     if (e.x < e.minX) { e.x = e.minX; e.vx = Math.abs(e.vx); }
     if (e.x > e.maxX) { e.x = e.maxX; e.vx = -Math.abs(e.vx); }
   });
+  if (movingGate) {
+    movingGate.x += movingGate.dir * movingGate.speed * dt;
+    if (movingGate.x < movingGate.min) { movingGate.x = movingGate.min; movingGate.dir = 1; }
+    if (movingGate.x > movingGate.max) { movingGate.x = movingGate.max; movingGate.dir = -1; }
+  }
   letters.forEach(b => { if (b.shake > 0) b.shake -= dt; });
   letters = letters.filter(b => !b.dead);
   pads.forEach(p => { if (p.squish > 0) p.squish -= dt; });
@@ -1738,6 +1821,12 @@ function stepPhysics(dt) {
 
       for (const w of walls) collideSegment(r, w.x1, w.y1, w.x2, w.y2, w.t);
       if (!gateOpen) for (const w of gateWalls) collideSegment(r, w.x1, w.y1, w.x2, w.y2, w.t);
+      // 움직이는 도착문: 문틈을 뺀 좌우 바닥이 좌우로 왕복한다
+      if (movingGate) {
+        const g = movingGate, sv = g.dir * g.speed;
+        collideSegment(r, -40, g.y, g.x - g.gapW / 2, g.y, g.t, sv, 0);
+        collideSegment(r, g.x + g.gapW / 2, g.y, WORLD_W + 40, g.y, g.t, sv, 0);
+      }
       // 트램펄린: 떨어지면서 밟았을 때만 강하게 위로 발사 (밑에서 올라올 땐 통과)
       for (const pd of pads) {
         if (pd.dead || r.vy <= 60) continue;
@@ -1856,10 +1945,20 @@ function stepPhysics(dt) {
 // ==========================================================
 //  순위 / 당첨 / 최종 결과
 // ==========================================================
+// 1등 모드 당첨 구간: 시작 등수(winnerStart)부터 winnerCount명
+// 참가자 수를 넘으면 뒤에서부터 맞춰 잘라낸다 → uniqueFinish 인덱스 [s, e)
+function firstWinRange(total) {
+  const wanted = Math.min(winnerCount, total);
+  const e = Math.min(winnerStart - 1 + wanted, total);
+  return { s: e - wanted, e };
+}
+
 function addRankLine(r) {
   const li = document.createElement('li');
   li.textContent = `${r.rank}. ${em(r)}${r.name}`;
-  const isWin = mode === 'first' && uniqueFinish.indexOf(r.name) < winnerCount;
+  const range = firstWinRange(new Set(runners.map(o => o.name)).size);
+  const idx = uniqueFinish.indexOf(r.name);
+  const isWin = mode === 'first' && idx >= range.s && idx < range.e;
   if (isWin) { li.classList.add('winner-line'); li.textContent += ' ★'; }
   rankList.appendChild(li);
   rankList.parentElement.scrollTop = rankList.parentElement.scrollHeight;
@@ -1869,10 +1968,14 @@ function checkWinner() {
   if (winnerDeclared) return;
   const totalStudents = new Set(runners.map(r => r.name)).size;
   const wanted = Math.min(winnerCount, totalStudents);
-  if (mode === 'first' && uniqueFinish.length >= wanted) {
-    raceWinners = uniqueFinish.slice(0, wanted);
+  if (mode === 'first') {
+    const { s, e } = firstWinRange(totalStudents);
+    if (uniqueFinish.length < e) return;
+    raceWinners = uniqueFinish.slice(s, e);
+    raceWinStartRank = s + 1;
   } else if (mode === 'last' && finishedCount === runners.length) {
     raceWinners = uniqueOrder().slice(-wanted).map(r => r.name);
+    raceWinStartRank = 1;
   } else return;
   winnerDeclared = true;
   showWinner(raceWinners);
@@ -1882,7 +1985,7 @@ function showWinner(names) {
   const n = names.length;
   $('winnerEmoji').textContent = (showChars && n === 1) ? (charMap[names[0]] || '🎉') : '🎉';
   $('winnerLabel').textContent = mode === 'first'
-    ? (n === 1 ? '1등 당첨!' : `1등~${n}등 당첨!`)
+    ? (n === 1 ? `${raceWinStartRank}등 당첨!` : `${raceWinStartRank}등~${raceWinStartRank + n - 1}등 당첨!`)
     : (n === 1 ? '꼴찌 당첨!' : `꼴찌 ${n}명 당첨!`);
   const nameEl = $('winnerName');
   nameEl.style.fontSize = n > 2 ? '30px' : n === 2 ? '42px' : '';
@@ -1922,7 +2025,7 @@ function showResults() {
   const order = uniqueOrder();
   const cls = $('classInput').value.trim();
   $('resultTitle').textContent = '최종 결과';
-  const modeTxt = mode === 'first' ? '1등' : '꼴찌';
+  const modeTxt = mode === 'first' ? `${raceWinStartRank}등부터` : '꼴찌';
   $('resultSub').textContent = `${cls ? cls + ' · ' : ''}${currentMapName} · ${order.length}명 · ${modeTxt} ${raceWinners.length || winnerCount}명 당첨`;
 
   // 시상대 (1~3등)
@@ -2241,6 +2344,23 @@ function drawMap() {
       ctx.beginPath(); ctx.moveTo(w.x1, w.y1); ctx.lineTo(w.x2, w.y2); ctx.stroke();
       ctx.setLineDash([]);
     }
+  }
+  // 움직이는 도착문
+  if (movingGate) {
+    const g = movingGate, gl = g.x - g.gapW / 2, gr = g.x + g.gapW / 2;
+    for (const [x1, x2] of [[-40, gl], [gr, WORLD_W + 40]]) {
+      ctx.strokeStyle = th.wallOuter;
+      ctx.lineWidth = g.t + 6;
+      ctx.beginPath(); ctx.moveTo(x1, g.y); ctx.lineTo(x2, g.y); ctx.stroke();
+      ctx.strokeStyle = th.wallInner;
+      ctx.lineWidth = g.t;
+      ctx.beginPath(); ctx.moveTo(x1, g.y); ctx.lineTo(x2, g.y); ctx.stroke();
+    }
+    // 문틈 위치 표시
+    ctx.fillStyle = '#48bb78';
+    ctx.font = 'bold 26px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('▼', g.x, g.y - 26 - Math.abs(Math.sin(performance.now() / 300)) * 8);
   }
   for (const p of pegs) {
     ctx.beginPath();
@@ -2666,6 +2786,11 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 //  맵 편집기
 // ==========================================================
 let customMaps = loadState().customMaps || [];
+// 저장돼 있던 맵이 개편으로 삭제된 경우 랜덤으로 되돌린다
+if (mapChoice !== 'random' && !MAPS.concat(customMaps).some(m => m.id === mapChoice)) {
+  mapChoice = 'random';
+  saveState({ mapChoice });
+}
 const edCanvas = $('editorCanvas'), edx = edCanvas.getContext('2d');
 let edObjects = [], edHeight = 3500, edTool = 'peg', edCamY = -150, edEditingId = null;
 let edDrag = null;
