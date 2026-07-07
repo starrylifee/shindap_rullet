@@ -1532,9 +1532,10 @@ function buildMap(mapDef, previewOnly) {
   }
   buildFinish(fstyle, fy);
 
-  // 좌우 외벽
-  walls.push(new Wall(L, 120, L, fy + 10));
-  walls.push(new Wall(R, 120, R, fy + 10));
+  // 좌우 외벽 — 천장(위쪽 클램프 지점)까지 막아서 흔들린 구슬이
+  // 깔때기 위 모서리를 넘어 벽 바깥 빈 통로로 빠지지 못하게 한다
+  walls.push(new Wall(L, -450, L, fy + 10));
+  walls.push(new Wall(R, -450, R, fy + 10));
 
   // 미리보기(미니맵) 빌드는 코스 모양만 필요 — 아이템류 배치는 생략
   if (!previewOnly) {
