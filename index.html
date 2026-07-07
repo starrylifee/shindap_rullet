@@ -591,6 +591,10 @@
 const WORLD_W = 900;
 const GRAVITY = 1250;         // 경기 속도 (높일수록 빨라짐)
 const MAX_SPEED = 1900;
+// 고무줄 효과: 선두 독주 방지 — 평균보다 앞서면 중력 감소, 뒤처지면 증가
+const RUBBER_BRAKE = 0.18;    // 선두 감속 최대 비율
+const RUBBER_BOOST = 0.42;    // 후미 가속 최대 비율
+const RUBBER_RANGE = 1600;    // 평균에서 이 거리만큼 벌어지면 최대 효과
 const RESTITUTION = 0.45;
 const RUNNER_R = 17;
 const L = 45, R = WORLD_W - 45;
@@ -1673,10 +1677,21 @@ function stepPhysics(dt) {
   }
   particles = particles.filter(p => p.life > 0);
 
+  // 고무줄 효과: 활성 구슬 평균 진행도 기준으로 중력 배율 계산 (프레임당 1회)
+  let rubber = null;
+  {
+    const act = runners.filter(r => !r.finished && !r.swallowed);
+    if (act.length >= 2) {
+      const meanY = act.reduce((s, r) => s + r.y, 0) / act.length;
+      rubber = r => 1 + Math.max(-RUBBER_BRAKE,
+        Math.min(RUBBER_BOOST, (meanY - r.y) / RUBBER_RANGE));
+    }
+  }
+
   for (let step = 0; step < SUBSTEPS; step++) {
     for (const r of runners) {
       if (r.finished || r.swallowed) continue;
-      r.vy += GRAVITY * sub;
+      r.vy += GRAVITY * (rubber ? rubber(r) : 1) * sub;
 
       // 블랙홀: 위쪽으로 빨아들이는 인력 + 접촉 처리
       if (r.holeCd > 0) r.holeCd -= sub;
