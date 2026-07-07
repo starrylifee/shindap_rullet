@@ -526,7 +526,7 @@
   </div>
   <div id="mapLabel"></div>
   <div id="rankPanel">
-    <h3>도착 순위</h3>
+    <h3>실시간 순위</h3>
     <ol id="rankList"></ol>
   </div>
 
@@ -925,6 +925,9 @@ class Runner {
     this.spin = Math.random() * Math.PI * 2;
     this.holeCd = 0;        // 블랙홀에서 내뱉어진 뒤 잠깐 면역
     this.swallowed = false; // 블랙홀에 삼켜짐 (분신만)
+    this.slowT = 0;         // 달팽이 아이템 감속 남은 시간
+    this.stunT = 0;         // 얼음 아이템 경직 남은 시간
+    this.magT = 0;          // 자석 아이템 지속 시간 (주변을 끌어안는다)
   }
 }
 class Wall {
@@ -971,12 +974,12 @@ class Enemy {
     this.minX = minX; this.maxX = maxX; this.emoji = emoji;
   }
 }
-// 아이템: clone(분신술) / grow(커지기)
+// 아이템: clone(분신술) / grow(커지기) / slow(달팽이 — 상위권만 밟는 함정)
 class Item {
   constructor(x, y, type) {
     this.x = x; this.y = y; this.type = type;
     this.r = 26;
-    this.emoji = type === 'clone' ? '🪄' : '🍄';
+    this.emoji = { clone: '🪄', grow: '🍄', slow: '🐌', stun: '❄️', bomb: '💣', mag: '🧲' }[type] || '🎁';
     this.bob = Math.random() * Math.PI * 2;
     this.taken = false;
   }
@@ -988,6 +991,33 @@ class Pad {
     this.squish = 0;
     this.left = 5;      // 5번 튕기면 사라진다 (5→4→3→2→1)
     this.dead = false;
+  }
+}
+// 선풍기: 벽에 붙어 한쪽으로 바람을 분다 (주기적으로 켜졌다 꺼졌다)
+class Fan {
+  constructor(x, y, dir) {
+    this.x = x; this.y = y; this.dir = dir;   // dir 1 → 오른쪽으로 분다
+    this.band = 110;      // 바람 띠의 위아래 폭
+    this.range = 620;     // 바람이 닿는 거리
+    this.force = 950;     // 밀어내는 세기
+    this.period = 4.2; this.onDur = 2.4;
+    this.timer = Math.random() * 4.2;
+  }
+  get blowing() { return this.timer % this.period < this.onDur; }
+}
+// 바나나 껍질: 밟으면 이상한 방향으로 미끄러진다 (1회용)
+class Banana {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.rot = (Math.random() - 0.5) * 1.2;
+    this.dead = false;
+  }
+}
+// 슬라임 덩어리: 안에 들어가면 아주 느려진다 (탈출은 가능, 느릴 뿐)
+class SlimeBlob {
+  constructor(x, y, r) {
+    this.x = x; this.y = y; this.r = r;
+    this.phase = Math.random() * Math.PI * 2;
   }
 }
 // 사라지는 바닥: 주기적으로 열려서 뒤처진 구슬이 지름길로 떨어져 역전할 수 있다
@@ -1022,6 +1052,7 @@ class BlackHole {
 }
 
 let walls = [], pegs = [], spinners = [], letters = [], enemies = [], runners = [], items = [], holes = [], pads = [], traps = [];
+let fans = [], bananas = [], slimes = [];
 let gateWalls = [], gateOpen = false;
 let finishY = 5000;
 let particles = [];   // 월드 좌표 파티클 (블록 깨질 때)
@@ -1270,7 +1301,7 @@ function secGates(y, rows = 3) {
 // 각 맵은 시그니처 섹션 위주로 구성 + 도착문 스타일(finish)도 맵 개성의 일부
 // finish: center(중앙 깔때기) | sides(양옆 두 문) | moving(움직이는 문) | corner(왼쪽 구석)
 const MAPS = [
-  { id: 'classic',  name: '클래식 콩콩숲', emoji: '🌳', secs: ['pegs6', 'pegs4', 'pegs6', 'bumpers', 'pegs6', 'pegs4'], finish: 'center',
+  { id: 'classic',  name: '클래식 콩콩숲', emoji: '🌳', secs: ['pegs6', 'pegs4', 'pegs6', 'bumpers', 'pegs6', 'pegs4'], finish: 'center', wind: 1,
     bg: { top: '#9fdcaa', bottom: '#e8f8d8', deco: ['🌲','🌳','🍄','🌼','🐿️'], cloud: true } },
   { id: 'windmill', name: '바람개비 왕국', emoji: '🌀', secs: ['spinners', 'spinnersBig', 'pegs3', 'spinners', 'spinnersBig', 'spinners'], finish: 'center',
     bg: { top: '#c3b3f2', bottom: '#f2ebff', deco: ['🎡','🌷','🦋','🌀'], cloud: true } },
@@ -1278,7 +1309,7 @@ const MAPS = [
     bg: { top: '#2e6b50', bottom: '#47936f', deco: ['✏️','📚','🎒','🏫','📐'] } },
   { id: 'alien',    name: '외계인 침공',   emoji: '👾', secs: ['pegs3', 'enemiesA', 'zigzag', 'enemiesA', 'pegs3', 'enemiesA', 'ramps'], finish: 'moving',
     bg: { top: '#0d0d33', bottom: '#31315e', deco: ['⭐','🪐','🛸','✨','🌟','🌙'] } },
-  { id: 'slide',    name: '지그재그 미끄럼틀', emoji: '🛝', secs: ['zigzagT', 'ramps', 'zigzagT', 'ramps', 'zigzagT', 'ramps', 'zigzagT'], finish: 'sides',
+  { id: 'slide',    name: '지그재그 미끄럼틀', emoji: '🛝', secs: ['zigzagT', 'ramps', 'zigzagT', 'ramps', 'zigzagT', 'ramps', 'zigzagT'], finish: 'sides', wind: 1,
     bg: { top: '#ffd28f', bottom: '#fff4d8', deco: ['☀️','🛝','⚽','🌈','🪁'], cloud: true } },
   { id: 'bumper',   name: '슈퍼 튕튕 나라', emoji: '⭐', secs: ['bumpers', 'pegs6', 'bumpers', 'zigzag', 'bumpers', 'ramps', 'bumpers'], finish: 'sides',
     bg: { top: '#ffbcd9', bottom: '#ffeaf4', deco: ['🍭','🍬','🧁','🍩','🍪'] } },
@@ -1286,11 +1317,17 @@ const MAPS = [
     bg: { top: '#b9c3d4', bottom: '#e6eaf2', deco: ['🏰','🛡️','🚩','⚔️'] } },
   { id: 'vortex',   name: '회오리 소용돌이', emoji: '🌪', secs: ['vortex', 'pegs3', 'vortex', 'spinners', 'vortex'], finish: 'center',
     bg: { top: '#1f3a5c', bottom: '#3f6d8e', deco: ['🌪','🌀','💨','🍃','☁️'] } },
-  { id: 'snake',    name: '좌우 뱀길',      emoji: '🐍', secs: ['serpentineT', 'pegs3', 'serpentineT', 'bumpers', 'serpentineT', 'serpentineT'], finish: 'cornerR',
+  { id: 'snake',    name: '좌우 뱀길',      emoji: '🐍', secs: ['serpentineT', 'pegs3', 'serpentineT', 'bumpers', 'serpentineT', 'serpentineT'], finish: 'cornerR', wind: 1,
     bg: { top: '#7fb069', bottom: '#d8f3c1', deco: ['🐍','🌿','🍀','🐛','🌾'], cloud: true } },
-  { id: 'mix',      name: '뒤죽박죽 랜덤',  emoji: '🎲', secs: 'shuffle', finish: 'shuffle',
+  { id: 'windy',  name: '태풍의 언덕', emoji: '🌬️', secs: ['pegs3', 'serpentine', 'pegs4', 'zigzag', 'serpentine', 'pegs3'], finish: 'sides', wind: 3,
+    bg: { top: '#8fc9dd', bottom: '#eef9ff', deco: ['🌬️','🍃','🪁','☁️','🌫️'], cloud: true } },
+  { id: 'banana', name: '바나나 대소동', emoji: '🍌', secs: ['ramps', 'zigzag', 'serpentine', 'ramps', 'zigzag', 'ramps'], finish: 'sides', banana: true,
+    bg: { top: '#ffe9a8', bottom: '#fff8e1', deco: ['🍌','🐒','🌴','🥥'], cloud: true } },
+  { id: 'slime',  name: '슬라임 늪',    emoji: '🟢', secs: ['pegs3', 'zigzag', 'serpentine', 'pegs4', 'zigzag', 'pegs3'], finish: 'center', slime: true,
+    bg: { top: '#88c9a1', bottom: '#c9f2d0', deco: ['🟢','🧪','💧','🍀'] } },
+  { id: 'mix',      name: '뒤죽박죽 랜덤',  emoji: '🎲', secs: 'shuffle', finish: 'shuffle', wind: 1,
     bg: { top: '#ffe29a', bottom: '#c4f0ff', deco: ['🎲','❓','🎈','🎪','🎁'], cloud: true } },
-  { id: 'full',     name: '풀코스 마라톤',  emoji: '🏃', secs: ['pegs4', 'zigzag', 'letters', 'spinners', 'enemiesA', 'gates', 'bumpers', 'ramps', 'pegs4'], finish: 'moving',
+  { id: 'full',     name: '풀코스 마라톤',  emoji: '🏃', secs: ['pegs4', 'zigzag', 'letters', 'spinners', 'enemiesA', 'gates', 'bumpers', 'ramps', 'pegs4'], finish: 'moving', wind: 1,
     bg: { top: '#93d4ff', bottom: '#ffd9ec', deco: ['🏁','🎯','🌈','⭐','🔥'], cloud: true } },
 ];
 const DEFAULT_BG = { top: '#aee3ff', bottom: '#eafaf1', deco: ['🌼','🦋','🌈'], cloud: true };
@@ -1433,6 +1470,7 @@ function buildFinish(style, fy) {
 
 function buildMap(mapDef, previewOnly) {
   walls = []; pegs = []; spinners = []; letters = []; enemies = []; particles = []; items = []; holes = []; pads = []; traps = [];
+  fans = []; bananas = []; slimes = [];
   letterLog = [];
   movingGate = null;
   bgZones = [];
@@ -1515,7 +1553,8 @@ function buildMap(mapDef, previewOnly) {
       const iy = 520 + ((placed + Math.random()) / itemCount) * (fy - 1150);
       if (!spotClear(ix, iy, 62)) continue;
       if (!reachable(ix, iy, 1)) continue;
-      items.push(new Item(ix, iy, placed % 2 === 0 ? 'clone' : 'grow'));
+      items.push(new Item(ix, iy,
+        ['clone', 'grow', 'bomb', 'slow', 'clone', 'mag', 'grow', 'stun', 'bomb'][placed % 9]));
       placed++;
     }
 
@@ -1598,6 +1637,57 @@ function buildMap(mapDef, previewOnly) {
         }
       }
     }
+
+    // 선풍기: 좌우 벽에서 코스를 가로질러 바람을 분다 (wind 값이 클수록 촘촘)
+    const windMult = mapDef.wind || 0;
+    if (windMult) {
+      const fanCount = Math.max(1, Math.floor((fy - 500) / 2600)) * windMult;
+      let fPlaced = 0, fGuard = 0;
+      while (fPlaced < fanCount && fGuard++ < fanCount * 40) {
+        const fSide = fPlaced % 2 ? -1 : 1;
+        const fx = fSide === 1 ? L + 30 : R - 30;
+        const fyy = 900 + Math.random() * Math.max(400, fy - 1900);
+        if (fans.some(f => Math.abs(f.y - fyy) < 500)) continue;
+        fans.push(new Fan(fx, fyy, fSide));
+        fPlaced++;
+      }
+    }
+
+    // 바나나 껍질: 구슬 길 위 여기저기 + 경사면 위에도
+    if (mapDef.banana) {
+      const bCount = Math.max(8, Math.floor((fy - 500) / 550));
+      let bPlaced = 0, bGuard = 0;
+      while (bPlaced < bCount && bGuard++ < bCount * 60) {
+        const bx = 140 + Math.random() * (WORLD_W - 280);
+        const by = 700 + Math.random() * (fy - 1400);
+        if (!reachable(bx, by, 1)) continue;
+        if (bananas.some(b => Math.hypot(b.x - bx, b.y - by) < 170)) continue;
+        bananas.push(new Banana(bx, by));
+        bPlaced++;
+      }
+      walls.filter(w => {
+        const dx = Math.abs(w.x2 - w.x1), dy = Math.abs(w.y2 - w.y1);
+        return dx > 320 && dy > 70 && dy < dx && Math.min(w.y1, w.y2) > 800 && Math.max(w.y1, w.y2) < fy - 400;
+      }).slice(0, 5).forEach(w => {
+        const t = 0.3 + Math.random() * 0.4;
+        bananas.push(new Banana(w.x1 + (w.x2 - w.x1) * t, w.y1 + (w.y2 - w.y1) * t - 18));
+      });
+    }
+
+    // 슬라임 덩어리: 구슬 길 위에 끈적한 늪을 깐다
+    if (mapDef.slime) {
+      const sCount = Math.max(6, Math.floor((fy - 500) / 800));
+      let sPlaced = 0, sGuard = 0;
+      while (sPlaced < sCount && sGuard++ < sCount * 60) {
+        const sx = 170 + Math.random() * (WORLD_W - 340);
+        const sy = 800 + Math.random() * (fy - 1600);
+        const rad = 80 + Math.random() * 60;
+        if (!reachable(sx, sy, 2)) continue;
+        if (slimes.some(s => Math.hypot(s.x - sx, s.y - sy) < s.r + rad + 120)) continue;
+        slimes.push(new SlimeBlob(sx, sy, rad));
+        sPlaced++;
+      }
+    }
   }
 
   // 배경 + 장식 준비 (이어달리기는 구간별 배경의 장식을 쓴다)
@@ -1629,7 +1719,11 @@ function makeChainDef() {
     emoji: '🔗',
     chain: defs,
     bg: defs[0].bg,
-    finish: defs[defs.length - 1].finish
+    finish: defs[defs.length - 1].finish,
+    // 테마 장치는 연결된 맵 것을 물려받는다
+    wind: Math.max(...defs.map(d => d.wind || 0)),
+    banana: defs.some(d => d.banana),
+    slime: defs.some(d => d.slime)
   };
 }
 
@@ -1805,10 +1899,13 @@ function spawnRunners(entries) {
   const spacing = Math.min(60, (WORLD_W - 300) / cols);
   flat.forEach((name, i) => {
     const col = i % cols, row = Math.floor(i / cols);
-    const x = WORLD_W / 2 - ((cols - 1) * spacing) / 2 + col * spacing + (Math.random() - 0.5) * 8;
+    // 자리도 셔플돼 있지만, 위치·속도까지 흔들어서 확실히 섞는다
+    const x = WORLD_W / 2 - ((cols - 1) * spacing) / 2 + col * spacing + (Math.random() - 0.5) * spacing * 0.9;
     const y = 240 - row * 44;
     const color = COLOR_POOL[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % COLOR_POOL.length];
-    runners.push(new Runner(name, charMap[name] || '🐰', color, x, y));
+    const r = new Runner(name, charMap[name] || '🐰', color, x, y);
+    r.vx = (Math.random() - 0.5) * 260;
+    runners.push(r);
   });
 }
 
@@ -1962,6 +2059,15 @@ function stepPhysics(dt) {
     if (movingGate.x > movingGate.max) { movingGate.x = movingGate.max; movingGate.dir = -1; }
   }
   traps.forEach(tw => { tw.timer += dt; });
+  fans.forEach(f => { f.timer += dt; });
+  if (bananas.some(b => b.dead)) bananas = bananas.filter(b => !b.dead);
+  // 출발 문이 열리기 전: 구슬 더미를 계속 흔들어 자리를 섞는다
+  if (!gateOpen) {
+    for (const r of runners) {
+      r.vx += (Math.random() - 0.5) * 130;
+      if (Math.random() < 0.04) r.vy -= 140 + Math.random() * 180;
+    }
+  }
   // 순찰형 블랙홀: 좌우로 어슬렁거린다
   holes.forEach(h => {
     if (!h.vx || h.dead) return;
@@ -1992,7 +2098,46 @@ function stepPhysics(dt) {
   for (let step = 0; step < SUBSTEPS; step++) {
     for (const r of runners) {
       if (r.finished || r.swallowed) continue;
-      r.vy += GRAVITY * (rubber ? rubber(r) : 1) * sub;
+      // 얼음 경직: 그 자리에 꽁꽁 얼어붙는다
+      if (r.stunT > 0) { r.stunT -= sub; r.vx = 0; r.vy = 0; continue; }
+      let gm = rubber ? rubber(r) : 1;
+      if (r.slowT > 0) {
+        // 달팽이 감속: 중력을 줄이고 속도를 계속 깎는다
+        r.slowT -= sub;
+        gm *= 0.35;
+        r.vx *= 1 - 1.8 * sub;
+        r.vy *= 1 - 1.8 * sub;
+      }
+      r.vy += GRAVITY * gm * sub;
+      // 슬라임 속: 움직일 수는 있지만 아주 느리다
+      for (const sl of slimes) {
+        if (Math.hypot(r.x - sl.x, r.y - sl.y) < sl.r) {
+          r.vx *= 1 - 3.2 * sub;
+          r.vy *= 1 - 3.2 * sub;
+          break;
+        }
+      }
+      // 선풍기 바람: 켜져 있는 동안 진행 방향을 가로로 밀어낸다
+      for (const f of fans) {
+        if (!f.blowing) continue;
+        if (Math.abs(r.y - f.y) > f.band) continue;
+        const dx = (r.x - f.x) * f.dir;
+        if (dx < 0 || dx > f.range) continue;
+        r.vx += f.dir * f.force * (1 - dx / f.range) * sub;
+      }
+      // 자석: 주변 구슬을 끌어안아 못 가게 한다
+      if (r.magT > 0) {
+        r.magT -= sub;
+        for (const o of runners) {
+          if (o === r || o.finished || o.swallowed) continue;
+          const dx = r.x - o.x, dy = r.y - o.y;
+          const d = Math.hypot(dx, dy);
+          if (d > 240 || d < 1) continue;
+          const f = 1500 * (1 - d / 240);
+          o.vx += (dx / d) * f * sub;
+          o.vy += (dy / d) * f * sub;
+        }
+      }
 
       // 블랙홀: 위쪽으로 빨아들이는 인력 + 접촉 처리
       if (r.holeCd > 0) r.holeCd -= sub;
@@ -2068,6 +2213,20 @@ function stepPhysics(dt) {
         }
         break;
       }
+      // 바나나 껍질: 밟으면 이상한 방향으로 쭉 미끄러진다 (1회용)
+      for (const bn of bananas) {
+        if (bn.dead) continue;
+        if (Math.hypot(r.x - bn.x, r.y - bn.y) > r.r + 18) continue;
+        bn.dead = true;
+        const slipDir = Math.random() < 0.5 ? -1 : 1;
+        r.vx = slipDir * (450 + Math.random() * 500);
+        r.vy = -(150 + Math.random() * 350);
+        r.spin += slipDir * 3;
+        burstParticles(bn.x, bn.y, '#f6e05e', 14);
+        beep(500, 0.08, 'square', 0.15);
+        beep(300, 0.12, 'square', 0.12, 0.06);
+        break;
+      }
       for (const p of pegs) collideCircle(r, p.x, p.y, p.r, p.bouncy);
       for (const s of spinners) {
         for (const seg of s.segments()) {
@@ -2107,9 +2266,43 @@ function stepPhysics(dt) {
     for (const r of runners) {
       if (r.finished) continue;
       if (Math.hypot(r.x - it.x, r.y - it.y) < r.r + it.r) {
+        if (it.type === 'slow') {
+          // 달팽이: 상위 30% 안에 든 구슬만 밟는다 (하위권은 그냥 통과)
+          const act = runners.filter(o => !o.finished && !o.swallowed);
+          const ahead = act.filter(o => o.y > r.y).length;
+          if (ahead > (act.length - 1) * 0.3) continue;
+          it.taken = true;
+          r.slowT = 3;
+          burstParticles(it.x, it.y, '#90cdf4');
+          beep(140, 0.35, 'sawtooth', 0.18);
+          break;
+        }
         it.taken = true;
-        burstParticles(it.x, it.y, it.type === 'clone' ? '#d6bcfa' : '#feb2b2');
-        if (it.type === 'clone' && runners.length + newClones.length < 90) {
+        burstParticles(it.x, it.y, { clone: '#d6bcfa', grow: '#feb2b2', stun: '#bee3f8', bomb: '#f6ad55', mag: '#f687b3' }[it.type] || '#e2e8f0');
+        if (it.type === 'stun') {
+          // 얼음! 0.5초 그 자리에 꽁꽁
+          r.stunT = 0.5;
+          r.vx = 0; r.vy = 0;
+          beep(1200, 0.15, 'square', 0.12);
+        } else if (it.type === 'bomb') {
+          // 펑! 주변 구슬까지 사방으로 튕겨나가 방향이 뒤바뀐다
+          for (const o of runners) {
+            if (o.finished || o.swallowed) continue;
+            const d = Math.hypot(o.x - it.x, o.y - it.y);
+            if (d > 200) continue;
+            const a = Math.atan2(o.y - it.y, o.x - it.x) + (Math.random() - 0.5) * 0.8;
+            const p = 500 + Math.random() * 400;
+            o.vx += Math.cos(a) * p;
+            o.vy += Math.sin(a) * p - 150;
+          }
+          burstParticles(it.x, it.y, '#fc8181', 26);
+          beep(70, 0.5, 'sawtooth', 0.25);
+        } else if (it.type === 'mag') {
+          // 자석! 잠깐 동안 옆 친구들을 끌어안는다
+          r.magT = 2.5;
+          beep(880, 0.1, 'sine', 0.15);
+          beep(660, 0.12, 'sine', 0.15, 0.1);
+        } else if (it.type === 'clone' && runners.length + newClones.length < 90) {
           // 분신술! 1개 → 3개 (결과에는 가장 좋은 등수만 기록)
           for (let k = 0; k < 2; k++) {
             const c = new Runner(r.name, r.emoji, r.color, r.x + (k ? 26 : -26), r.y - 10);
@@ -2138,7 +2331,7 @@ function stepPhysics(dt) {
       r.finished = true;
       r.rank = ++finishedCount;
       if (!uniqueFinish.includes(r.name)) uniqueFinish.push(r.name);
-      addRankLine(r);
+      updateLiveRank();
       beep(600, 0.15, 'triangle', 0.15);
       // 1등이 들어오면 남은 아이템 제거 → 경기가 늘어지지 않게
       if (finishedCount === 1) {
@@ -2173,15 +2366,27 @@ function firstWinRange(total) {
   return { s: e - wanted, e };
 }
 
-function addRankLine(r) {
-  const li = document.createElement('li');
-  li.textContent = `${r.rank}. ${em(r)}${r.name}`;
-  const range = firstWinRange(new Set(runners.map(o => o.name)).size);
-  const idx = uniqueFinish.indexOf(r.name);
-  const isWin = mode === 'first' && idx >= range.s && idx < range.e;
-  if (isWin) { li.classList.add('winner-line'); li.textContent += ' ★'; }
-  rankList.appendChild(li);
-  rankList.parentElement.scrollTop = rankList.parentElement.scrollHeight;
+// 실시간 순위: 도착한 학생은 확정 순위로, 달리는 중이면 진행도 순으로.
+// 분신이 여럿이면 가장 앞선 것 하나만 센다.
+function updateLiveRank() {
+  const total = new Set(runners.map(o => o.name)).size;
+  const range = firstWinRange(total);
+  const seen = new Set();
+  let html = '';
+  uniqueFinish.forEach((n, i) => {
+    seen.add(n);
+    const win = mode === 'first' && i >= range.s && i < range.e;
+    html += `<li${win ? ' class="winner-line"' : ''}>${i + 1}. ${showChars ? (charMap[n] || '') + ' ' : ''}${n}${win ? ' ★' : ''}</li>`;
+  });
+  let pos = uniqueFinish.length;
+  const act = runners.filter(r => !r.finished && !r.swallowed).sort((a, b) => b.y - a.y);
+  for (const r of act) {
+    if (seen.has(r.name)) continue;
+    seen.add(r.name);
+    pos++;
+    html += `<li style="opacity:0.55">${pos}. ${em(r)}${r.name}</li>`;
+  }
+  rankList.innerHTML = html;
 }
 
 function checkWinner() {
@@ -2669,7 +2874,10 @@ function drawMap() {
     ctx.translate(it.x, it.y + bobY);
     ctx.beginPath();
     ctx.arc(0, 0, it.r + 6 + Math.sin(now * 5 + it.bob) * 3, 0, Math.PI * 2);
-    ctx.strokeStyle = it.type === 'clone' ? 'rgba(159,122,234,0.7)' : 'rgba(245,101,101,0.7)';
+    ctx.strokeStyle = {
+      clone: 'rgba(159,122,234,0.7)', grow: 'rgba(245,101,101,0.7)', slow: 'rgba(144,205,244,0.7)',
+      stun: 'rgba(190,227,248,0.8)', bomb: 'rgba(246,173,85,0.8)', mag: 'rgba(246,135,179,0.8)'
+    }[it.type] || 'rgba(226,232,240,0.7)';
     ctx.lineWidth = 3;
     ctx.setLineDash([8, 6]);
     ctx.stroke();
@@ -2707,6 +2915,55 @@ function drawMap() {
     ctx.fillText('⇧', -12, -22 - Math.abs(Math.sin(bounceT)) * 8);
     ctx.font = 'bold 24px sans-serif';
     ctx.fillText(pd.left, 14, -24);
+    ctx.restore();
+  }
+  // 슬라임 덩어리 (반투명, 눈 달림)
+  for (const sl of slimes) {
+    const wob = Math.sin(now * 2 + sl.phase) * sl.r * 0.06;
+    ctx.beginPath();
+    ctx.ellipse(sl.x, sl.y, sl.r + wob, sl.r - wob, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(72,187,120,0.32)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(47,133,90,0.55)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(20,60,40,0.5)';
+    ctx.beginPath();
+    ctx.arc(sl.x - sl.r * 0.25, sl.y - 8, 6, 0, Math.PI * 2);
+    ctx.arc(sl.x + sl.r * 0.25, sl.y - 8, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // 바나나 껍질
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const bn of bananas) {
+    ctx.save();
+    ctx.translate(bn.x, bn.y);
+    ctx.rotate(bn.rot);
+    ctx.font = '30px sans-serif';
+    ctx.fillText('🍌', 0, 0);
+    ctx.restore();
+  }
+  // 선풍기 + 바람 줄기
+  for (const f of fans) {
+    if (f.blowing) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.32)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([16, 20]);
+      ctx.lineDashOffset = -(performance.now() / 5) * f.dir;
+      for (const oy of [-65, 0, 65]) {
+        ctx.beginPath();
+        ctx.moveTo(f.x + f.dir * 26, f.y + oy);
+        ctx.lineTo(f.x + f.dir * (26 + f.range * 0.85), f.y + oy);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.lineDashOffset = 0;
+    }
+    ctx.save();
+    ctx.translate(f.x, f.y);
+    if (f.blowing) ctx.rotate(performance.now() / 90);
+    ctx.font = '38px sans-serif';
+    ctx.fillText('🌀', 0, 0);
     ctx.restore();
   }
   // 블랙홀
@@ -2831,6 +3088,13 @@ function drawRunners() {
       }
     }
 
+    // 상태 표시: 달팽이 감속 / 얼음 경직 / 자석
+    if (r.slowT > 0 || r.stunT > 0 || r.magT > 0) {
+      ctx.font = `${Math.max(20, dr * 0.9)}px sans-serif`;
+      ctx.textBaseline = 'middle';
+      ctx.fillText(r.stunT > 0 ? '❄️' : r.magT > 0 ? '🧲' : '🐌', r.x, r.y - dr - 16);
+    }
+
     // 이름표 (축소 화면에서는 생략)
     if (showNames) {
       ctx.font = '600 13px "Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif';
@@ -2921,6 +3185,7 @@ function stepConfetti(dt) {
 
 // ---------- 메인 루프 ----------
 let lastTime = 0, rafId = 0;
+let lastRankT = 0;
 function loop(ts) {
   rafId = requestAnimationFrame(loop);
   if (!lastTime) lastTime = ts;
@@ -2928,6 +3193,8 @@ function loop(ts) {
   lastTime = ts;
   if (raceRunning) {
     for (let i = 0; i < speedMult; i++) stepPhysics(DT);
+    // 실시간 순위 갱신 (0.3초마다)
+    if (ts - lastRankT > 300) { lastRankT = ts; updateLiveRank(); }
   }
   render();
   stepConfetti(dt);
