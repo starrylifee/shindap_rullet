@@ -249,12 +249,13 @@
     background: rgba(15,18,24,0.72); border: 1px solid rgba(255,255,255,0.12);
     -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
     border-radius: 14px;
-    padding: 12px 16px; min-width: 160px; max-height: 66vh; overflow-y: auto;
+    padding: 14px 20px; min-width: 230px; max-height: 74vh; overflow-y: auto;
     box-shadow: 0 8px 24px rgba(0,0,0,0.35);
   }
-  #rankPanel h3 { font-size: 12px; font-weight: 700; color: #9aa3b2; letter-spacing: 0.5px; margin-bottom: 6px; }
-  #rankList { list-style: none; font-size: 13.5px; line-height: 1.9; color: #e8eaf0; }
-  #rankList li.winner-line { font-weight: 700; color: #fbbf24; }
+  #rankPanel h3 { font-size: 16px; font-weight: 800; color: #cbd3e0; letter-spacing: 0.5px; margin-bottom: 8px; }
+  #rankList { list-style: none; font-size: 21px; font-weight: 600; line-height: 1.75; color: #f2f4f8; }
+  #rankList li:first-child { font-size: 26px; font-weight: 800; color: #ffd76a; }
+  #rankList li.winner-line { font-weight: 800; color: #fbbf24; }
 
   /* ===== 당첨 발표 ===== */
   #winnerOverlay {
@@ -3104,17 +3105,19 @@ function drawRunners() {
       ctx.fillText(r.stunT > 0 ? '❄️' : r.magT > 0 ? '🧲' : '🐌', r.x, r.y - dr - 16);
     }
 
-    // 이름표 (축소 화면에서는 생략)
+    // 이름표 (축소 화면에서는 생략) — 화면 배율과 무관하게 항상 크게
     if (showNames) {
-      ctx.font = '600 13px "Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif';
+      const fs = Math.min(30, 17 / camScale);
+      ctx.font = `700 ${fs.toFixed(1)}px "Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif`;
       const tw = ctx.measureText(r.name).width;
-      ctx.fillStyle = 'rgba(13,16,22,0.78)';
+      const ph = fs * 1.55;
+      ctx.fillStyle = 'rgba(13,16,22,0.8)';
       ctx.beginPath();
-      ctx.roundRect(r.x - tw / 2 - 7, r.y + dr + 4, tw + 14, 20, 10);
+      ctx.roundRect(r.x - tw / 2 - 9, r.y + dr + 4, tw + 18, ph, ph / 2);
       ctx.fill();
       ctx.fillStyle = '#f2f4f8';
       ctx.textBaseline = 'top';
-      ctx.fillText(r.name, r.x, r.y + dr + 8);
+      ctx.fillText(r.name, r.x, r.y + dr + 4 + fs * 0.26);
     }
   }
 }
