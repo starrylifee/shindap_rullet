@@ -997,19 +997,19 @@ class Pad {
 class Fan {
   constructor(x, y, dir) {
     this.x = x; this.y = y; this.dir = dir;   // dir 1 → 오른쪽으로 분다
-    this.band = 110;      // 바람 띠의 위아래 폭
+    this.band = 130;      // 바람 띠의 위아래 폭
     this.range = 620;     // 바람이 닿는 거리
-    this.force = 950;     // 밀어내는 세기
-    this.period = 4.2; this.onDur = 2.4;
-    this.timer = Math.random() * 4.2;
+    this.force = 1500;    // 밀어내는 세기 (강풍!)
+    this.period = 5.0; this.onDur = 2.6;   // 켜짐 2.6초 ↔ 꺼짐 2.4초 — 꺼지면 풀려난다
+    this.timer = Math.random() * 5.0;
   }
   get blowing() { return this.timer % this.period < this.onDur; }
 }
 // 바나나 껍질: 밟으면 이상한 방향으로 미끄러진다 (1회용)
 class Banana {
-  constructor(x, y) {
+  constructor(x, y, rot) {
     this.x = x; this.y = y;
-    this.rot = (Math.random() - 0.5) * 1.2;
+    this.rot = rot !== undefined ? rot : (Math.random() - 0.5) * 1.2;
     this.dead = false;
   }
 }
@@ -1653,24 +1653,22 @@ function buildMap(mapDef, previewOnly) {
       }
     }
 
-    // 바나나 껍질: 구슬 길 위 여기저기 + 경사면 위에도
+    // 바나나 껍질: 경사면 위에 착 붙여 깔아둔다 (공중에 뜨면 티가 안 남)
     if (mapDef.banana) {
-      const bCount = Math.max(8, Math.floor((fy - 500) / 550));
-      let bPlaced = 0, bGuard = 0;
-      while (bPlaced < bCount && bGuard++ < bCount * 60) {
-        const bx = 140 + Math.random() * (WORLD_W - 280);
-        const by = 700 + Math.random() * (fy - 1400);
-        if (!reachable(bx, by, 1)) continue;
-        if (bananas.some(b => Math.hypot(b.x - bx, b.y - by) < 170)) continue;
-        bananas.push(new Banana(bx, by));
-        bPlaced++;
-      }
       walls.filter(w => {
         const dx = Math.abs(w.x2 - w.x1), dy = Math.abs(w.y2 - w.y1);
-        return dx > 320 && dy > 70 && dy < dx && Math.min(w.y1, w.y2) > 800 && Math.max(w.y1, w.y2) < fy - 400;
-      }).slice(0, 5).forEach(w => {
-        const t = 0.3 + Math.random() * 0.4;
-        bananas.push(new Banana(w.x1 + (w.x2 - w.x1) * t, w.y1 + (w.y2 - w.y1) * t - 18));
+        return dx > 260 && dy > 60 && dy < dx &&
+               Math.min(w.y1, w.y2) > 700 && Math.max(w.y1, w.y2) < fy - 300;
+      }).forEach(w => {
+        const n = 1 + Math.floor(Math.random() * 2);   // 램프당 1~2개
+        for (let i = 0; i < n; i++) {
+          const t = 0.15 + Math.random() * 0.7;
+          const bx = w.x1 + (w.x2 - w.x1) * t;
+          const by = w.y1 + (w.y2 - w.y1) * t - 18;
+          if (bananas.some(b => Math.hypot(b.x - bx, b.y - by) < 90)) continue;
+          // 경사 각도에 맞춰 눕힌다
+          bananas.push(new Banana(bx, by, Math.atan2(w.y2 - w.y1, w.x2 - w.x1)));
+        }
       });
     }
 
@@ -2285,18 +2283,21 @@ function stepPhysics(dt) {
           r.vx = 0; r.vy = 0;
           beep(1200, 0.15, 'square', 0.12);
         } else if (it.type === 'bomb') {
-          // 펑! 주변 구슬까지 사방으로 튕겨나가 방향이 뒤바뀐다
+          // 펑! 화면 절반 범위의 구슬이 쿵 하고 밀려난다
           for (const o of runners) {
             if (o.finished || o.swallowed) continue;
             const d = Math.hypot(o.x - it.x, o.y - it.y);
-            if (d > 200) continue;
-            const a = Math.atan2(o.y - it.y, o.x - it.x) + (Math.random() - 0.5) * 0.8;
-            const p = 500 + Math.random() * 400;
+            if (d > 440) continue;
+            const a = Math.atan2(o.y - it.y, o.x - it.x) + (Math.random() - 0.5) * 0.6;
+            const p = 400 + (1 - d / 440) * (700 + Math.random() * 400);
             o.vx += Math.cos(a) * p;
-            o.vy += Math.sin(a) * p - 150;
+            o.vy += Math.sin(a) * p - 200;
           }
-          burstParticles(it.x, it.y, '#fc8181', 26);
-          beep(70, 0.5, 'sawtooth', 0.25);
+          camShake = 0.6;   // 쿵! 화면이 흔들린다
+          burstParticles(it.x, it.y, '#fc8181', 40);
+          burstParticles(it.x, it.y, '#f6ad55', 30);
+          beep(60, 0.6, 'sawtooth', 0.3);
+          beep(45, 0.8, 'sawtooth', 0.2, 0.1);
         } else if (it.type === 'mag') {
           // 자석! 잠깐 동안 옆 친구들을 끌어안는다
           r.magT = 2.5;
@@ -2671,6 +2672,7 @@ function focusRunner() {
   return active.reduce((a, b) => (a.y > b.y ? a : b));
 }
 
+let camShake = 0;   // 폭탄 등 큰 충격 때 화면 흔들림
 function render() {
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
@@ -2695,6 +2697,11 @@ function render() {
   ctx.save();
   ctx.scale(camScale, camScale);
   ctx.translate(offX, -camY);
+  if (camShake > 0) {
+    camShake = Math.max(0, camShake - 0.02);
+    const s = camShake * 30;
+    ctx.translate((Math.random() - 0.5) * s, (Math.random() - 0.5) * s);
+  }
 
   drawBackground(viewH);
   drawMap();
