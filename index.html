@@ -1192,11 +1192,12 @@ const PIXEL_FONT = {
 let letterLog = [];        // spawnPixelLetter 호출 기록 (편집기 변환용)
 let lastSectionRange = null; // 섹션이 만든 오브젝트 범위 (편집기 변환용)
 
-// A-Z 픽셀 폰트에 없는 글자(한글 등)는 캔버스에 그려 모양을 샘플링해 8×8 격자로 변환
+// A-Z 픽셀 폰트에 없는 글자(한글 등)는 캔버스에 그려 모양을 샘플링해 격자로 변환
+// 한글은 획이 복잡해 고해상도(14×14 이상)로 떠야 뭉치지 않고 읽힌다
 const GLYPH_CACHE = {};
-function glyphGrid(ch) {
-  if (GLYPH_CACHE[ch]) return GLYPH_CACHE[ch];
-  const G = 8, S = 32;
+function glyphGrid(ch, G = 8, S = 32, thresh = 55) {
+  const key = ch + '_' + G + '_' + thresh;
+  if (GLYPH_CACHE[key]) return GLYPH_CACHE[key];
   const cv = document.createElement('canvas');
   cv.width = cv.height = S;
   const g = cv.getContext('2d');
@@ -1213,11 +1214,11 @@ function glyphGrid(ch) {
       const y0 = (ry * S / G) | 0, y1 = ((ry + 1) * S / G) | 0;
       for (let yy = y0; yy < y1; yy++)
         for (let xx = x0; xx < x1; xx++) { sum += px[(yy * S + xx) * 4 + 3]; cnt++; }
-      line += (sum / cnt > 55) ? '#' : '.';
+      line += (sum / cnt > thresh) ? '#' : '.';
     }
     rows.push(line);
   }
-  GLYPH_CACHE[ch] = rows;
+  GLYPH_CACHE[key] = rows;
   return rows;
 }
 
@@ -1296,12 +1297,128 @@ function secGates(y, rows = 3) {
   return y + 100 + rows * 300;
 }
 
+// ── 신답 교육비전 키워드 색 (학교 교육계획 도해의 강조색) ──
+const SD_KW = {
+  '배려와도전':   '#1e7e34',   // 교표 초록 — 비전 핵심가치
+  '꿈찾는어린이': '#8b3aa8',   // 꿈을 찾는 어린이 (자기관리역량·보라)
+  '창의적사고':   '#d0463a',   // 도전하는 어린이 (창의적사고역량·빨강)
+  '생각키움':     '#b8860b',   // 생각 키움 독서활동 프로젝트 (노랑 박스)
+  '꿈키움':       '#d6336c',   // 꿈 키움 문화·예술·진로 프로젝트 (분홍 박스)
+  '신답초교':     '#1f7a5a',   // 학교 이름 (교표 초록 계열)
+};
+// 교육비전 키워드를 화면 가로에 맞춰 강조색 블록으로 깐다 (구슬이 부딪혀 깨는 관문)
+// 한글이 뭉치지 않게 고해상도 글리프 + 글자 사이 넉넉한 간격으로 큼직하게 배치
+const KW_GLYPH = 18;      // 글리프 해상도 (열 수) — 높을수록 획이 또렷·분리
+const KW_THRESH = 88;     // 채움 임계값 — 높을수록 획이 얇아져 획 사이 간격이 벌어진다
+function secKeyword(y, text) {
+  const chs = [...text.replace(/\s/g, '')];
+  if (!chs.length) return secPegs(y, 3);
+  const color = SD_KW[text] || '#1e7e34';
+  const n = chs.length;
+  const gap = 3;                                   // 글자 사이 빈 칸(셀 단위) → 글자끼리 안 붙게
+  const unit = KW_GLYPH + gap;
+  const cell = Math.min(11, (R - L - 24) / (n * unit));
+  const charW = cell * unit;
+  const totalW = n * charW;
+  const x0 = (WORLD_W - totalW) / 2 + charW / 2;
+  const yy = y + 130;
+  const start = letters.length;
+  chs.forEach((ch, k) => spawnKeywordChar(ch, x0 + k * charW, yy, cell, color));
+  for (let i = start; i < letters.length; i++) letters[i].fragile = true;
+  return yy + cell * KW_GLYPH + 200;
+}
+// 한글 한 글자를 고해상도 격자 블록으로 (중심 cx, 위 ty 기준)
+// 블록을 셀보다 작게 그려(획 사이 여백) 획이 뭉치지 않고 또렷하게 보이도록
+function spawnKeywordChar(ch, cx, ty, cell, color) {
+  const font = glyphGrid(ch, KW_GLYPH, KW_GLYPH * 5, KW_THRESH);
+  const cols = font[0].length;
+  const lx = cx - cell * cols / 2;
+  const bs = Math.max(3, cell - 1.5);
+  font.forEach((line, ry) => {
+    [...line].forEach((c, ci) => {
+      if (c === '#') letters.push(new LetterBlock(lx + ci * cell, ty + ry * cell, bs, bs, ch, 1, color));
+    });
+  });
+}
+
+// ── 신답 마스코트 픽셀 아트 (벽돌깨기 관문용) ──
+// 새싹이 = 초록 잎사귀 후드 + 흰 얼굴 + 가슴에 노란 교표 / 곰돌이 = 갈색 곰 + 초록 교모 + 노란 완장
+const PAL_SAESSAK = { G: '#6cbf45', D: '#4f9f34', W: '#fffef6', E: '#4a3628', Y: '#f5d613' };
+const ART_SAESSAK = [
+  '.DD......GG.',   // 잎 끝
+  'DDDD....GGGG',
+  '.DDDD..GGGG.',
+  '...DDGGGG...',   // 잎이 머리로 모임
+  '...GGGGGG...',   // 초록 후드
+  '..GWWWWWWG..',   // 흰 얼굴
+  '..GWWWWWWG..',
+  '..GWEWWEWG..',   // 눈
+  '..GWWWWWWG..',
+  '...GGGGGG...',   // 몸통
+  '..GGGYYGGG..',   // 가슴의 노란 교표
+  '..GGGYYGGG..',
+  '..GGGGGGGG..',
+  '...WW..WW...',   // 흰 발
+];
+const PAL_GOM = { B: '#b07845', G: '#1e6b3c', E: '#3a2b1a', P: '#ff9bb0', Y: '#ffd23b', W: '#fffef6' };
+const ART_GOM = [
+  '...GGGGGG...',   // 초록 교모
+  '...GGYYGG...',   // 모자의 노란 교표
+  '.BGGGGGGGGB.',   // 귀 + 모자 챙
+  '.BBBBBBBBBB.',   // 얼굴
+  '.BBEBBBBEBB.',   // 눈
+  '.BPBBEEBBPB.',   // 볼 + 코
+  '..BBBWWBBB..',   // 주둥이
+  '..BBBBBBBB..',   // 몸통
+  '.BBBBBBBBYB.',   // 팔 + 노란 완장
+  '.BBBBBBBBYB.',
+  '..BBBBBBBB..',
+  '...BB..BB...',   // 발
+];
+// 픽셀 아트를 깨지는 블록 무더기로 (가로 중앙 cx, 위쪽 ty 기준)
+function buildBrickArt(art, palette, cx, ty, cell) {
+  const cols = art[0].length;
+  const lx = cx - cell * cols / 2;
+  art.forEach((line, ry) => {
+    [...line].forEach((c, ci) => {
+      if (c === '.') return;
+      const col = palette[c] || '#cccccc';
+      const blk = new LetterBlock(lx + ci * cell, ty + ry * cell, cell - 2, cell - 2, c, 1, col);
+      blk.fragile = true;
+      letters.push(blk);
+    });
+  });
+  return cell * art.length;
+}
+// 새싹이/곰돌이 모양 벽돌깨기 관문 — 좌·중·우 3개 배치
+// → 구슬이 반드시 하나는 맞고, 아래 트램펄린과 함께 여러 번 깨지는 걸 볼 수 있다
+function secMascotBricks(y, type) {
+  const art = type === 'gomdol' ? ART_GOM : ART_SAESSAK;
+  const pal = type === 'gomdol' ? PAL_GOM : PAL_SAESSAK;
+  const cols = art[0].length;
+  const cell = Math.min(15, (R - L - 120) / (cols * 3));
+  const w1 = cell * cols;
+  let h = 0;
+  for (const cx of [L + 60 + w1 / 2, WORLD_W / 2, R - 60 - w1 / 2]) {
+    h = buildBrickArt(art, pal, cx, y + 90, cell);
+  }
+  return y + 90 + h + 150;
+}
+
 // ==========================================================
 //  맵 10종
 // ==========================================================
 // 각 맵은 시그니처 섹션 위주로 구성 + 도착문 스타일(finish)도 맵 개성의 일부
 // finish: center(중앙 깔때기) | sides(양옆 두 문) | moving(움직이는 문) | corner(왼쪽 구석)
 const MAPS = [
+  // ★ 신답초 전용 맵 — 교육비전 「배려와 도전을 통하여 꿈을 찾고 가꾸는 어린이」와
+  //   교표(초록 링+노란 별)·마스코트(새싹이·곰돌이)를 코스에 담았다
+  { id: 'shindap', name: '신답 꿈길', emoji: '🌟',
+    secs: ['kw:배려와도전', 'pegs4', 'mascot:saessak', 'kw:꿈찾는어린이', 'spinners', 'kw:창의적사고',
+           'bumpers', 'mascot:gomdol', 'kw:생각키움', 'zigzag', 'kw:꿈키움', 'ramps',
+           'kw:신답초교', 'pegs3', 'vortex'],
+    finish: 'center', wind: 1, sdChars: true,
+    bg: { top: '#b9e2ae', bottom: '#f6fbe9', deco: ['🌱','⭐','📚','✏️','🏫'], cloud: true } },
   { id: 'classic',  name: '클래식 콩콩숲', emoji: '🌳', secs: ['pegs6', 'pegs4', 'pegs6', 'bumpers', 'pegs6', 'pegs4'], finish: 'center', wind: 1,
     bg: { top: '#9fdcaa', bottom: '#e8f8d8', deco: ['🌲','🌳','🍄','🌼','🐿️'], cloud: true } },
   { id: 'windmill', name: '바람개비 왕국', emoji: '🌀', secs: ['spinners', 'spinnersBig', 'pegs3', 'spinners', 'spinnersBig', 'spinners'], finish: 'center',
@@ -1334,6 +1451,8 @@ const MAPS = [
 const DEFAULT_BG = { top: '#aee3ff', bottom: '#eafaf1', deco: ['🌼','🦋','🌈'], cloud: true };
 
 function runSection(key, y, schoolName) {
+  if (key.startsWith('kw:')) return secKeyword(y, key.slice(3));
+  if (key.startsWith('mascot:')) return secMascotBricks(y, key.slice(7));
   switch (key) {
     case 'pegs3': return secPegs(y, 3);
     case 'pegs4': return secPegs(y, 4);
@@ -1360,6 +1479,8 @@ let currentMapName = '';
 let currentBg = null;
 let decorations = [];
 let bgZones = [];   // 이어달리기: 구간별 배경 (y0~y1에 해당 맵 배경)
+let sdActive = false;   // 신답 꿈길 맵일 때 마스코트·비전 배너 표시
+let mascots = [];       // 코스 옆을 따라 배치되는 새싹이/곰돌이 (월드 좌표)
 
 function shuffleSecs() {
   const all = ['pegs4', 'pegs6', 'zigzag', 'ramps', 'serpentine', 'vortex', 'spinners', 'bumpers', 'letters', 'enemiesA', 'gates'];
@@ -1386,8 +1507,12 @@ function spotClear(x, y, rad) {
 // → 아이템·블랙홀을 그 길 위에만 놓기 위한 사전 시뮬레이션
 const FLOW_CELL = 60;
 function probeFlow(fy) {
-  const visited = new Set();
-  const mark = (x, y) => visited.add(((x / FLOW_CELL) | 0) + ',' + ((y / FLOW_CELL) | 0));
+  // 셀별 방문 횟수(통행량)를 센다 → 붐비는 길 vs 어쩌다 스치는 길 구분
+  const counts = new Map();
+  const mark = (x, y) => {
+    const k = ((x / FLOW_CELL) | 0) + ',' + ((y / FLOW_CELL) | 0);
+    counts.set(k, (counts.get(k) || 0) + 1);
+  };
   const dt = 1 / 40;
   for (let p = 0; p < 44; p++) {
     const r = { x: 350 + Math.random() * 200, y: 360 + Math.random() * 40,
@@ -1410,17 +1535,43 @@ function probeFlow(fy) {
       mark(r.x, r.y);
     }
   }
-  return visited;
+  return counts;
 }
-function makeReachable(visited) {
-  if (visited.size < 40) return () => true;   // 프로브가 실패한 특이 맵은 기존 방식대로
+// minCount: 이 정도 이상 통행한 셀만 "구슬이 잘 찾아가는 곳"으로 인정 (기본 1 = 한 번이라도 지나감)
+function makeReachable(counts, minCount = 1) {
+  if (counts.size < 40) return () => true;   // 프로브가 실패한 특이 맵은 기존 방식대로
   return (x, y, slack) => {
     const cx = (x / FLOW_CELL) | 0, cy = (y / FLOW_CELL) | 0;
     for (let dx = -slack; dx <= slack; dx++)
-      for (let dy = -slack; dy <= slack; dy++)
-        if (visited.has((cx + dx) + ',' + (cy + dy))) return true;
+      for (let dy = -slack; dy <= slack; dy++) {
+        const c = counts.get((cx + dx) + ',' + (cy + dy));
+        if (c && c >= minCount) return true;
+      }
     return false;
   };
+}
+// 통행량 분포에서 상위 구간 문턱값 (frac=0.5 → 중앙값). 아이템·트램펄린을 붐비는 길에만 놓기 위함
+function trafficThreshold(counts, frac) {
+  const vals = [...counts.values()].sort((a, b) => a - b);
+  if (!vals.length) return 1;
+  return Math.max(4, vals[Math.min(vals.length - 1, Math.floor(vals.length * frac))]);
+}
+// 맵 중간중간 넓게 빈 공간에 바람개비(스피너)를 채운다 — 구슬이 다니는 길 위에만
+function addFillerSpinners(fy, counts) {
+  const onPath = makeReachable(counts, 2);
+  const target = Math.max(3, Math.floor((fy - 900) / 1300));
+  let placed = 0, guard = 0;
+  while (placed < target && guard++ < target * 140) {
+    const sx = 180 + Math.random() * (WORLD_W - 360);
+    const sy = 850 + Math.random() * Math.max(400, fy - 1700);
+    if (!spotClear(sx, sy, 200)) continue;                 // 넓게 비어 있는 곳만
+    if (!onPath(sx, sy, 2)) continue;                      // 구슬이 지나가는 길 위
+    if (spinners.some(s => Math.hypot(s.cx - sx, s.cy - sy) < 360)) continue;
+    const arms = Math.random() < 0.5 ? 2 : 3;
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    spinners.push(new Spinner(sx, sy, 120 + Math.random() * 45, dir * (1.8 + Math.random() * 0.9), arms, 12, 3));
+    placed++;
+  }
 }
 
 // 움직이는 도착문 (moving 스타일일 때만 사용)
@@ -1539,23 +1690,37 @@ function buildMap(mapDef, previewOnly) {
   walls.push(new Wall(L, -450, L, fy + 10));
   walls.push(new Wall(R, -450, R, fy + 10));
 
+  // 좌우 벽 돌기 — 벽을 타고 직진 낙하하는 구슬을 안쪽으로 튕겨낸다 (좌우 엇갈리게)
+  if (mapDef.sdChars) {
+    for (let wy = 560; wy < fy - 420; wy += 240) {
+      pegs.push(new Peg(L + 24, wy, 12, true));
+      pegs.push(new Peg(R - 24, wy + 120, 12, true));
+    }
+  }
+
   // 미리보기(미니맵) 빌드는 코스 모양만 필요 — 아이템류 배치는 생략
   if (!previewOnly) {
     // 편집기에서 직접 놓은 블랙홀·트램펄린이 있으면 자동 배치는 건너뛴다
     const manualHoles = holes.length > 0;
     const manualPads = pads.length > 0;
 
-    // 구슬이 실제로 지나가는 길 기록 (아이템·블랙홀 배치용)
-    const reachable = makeReachable(probeFlow(fy));
+    // 1차 프로브: 구슬 흐름 파악
+    let flow = probeFlow(fy);
+    // 빈 공간에 바람개비 채우기 → 흐름이 바뀌었으니 다시 프로브
+    if (mapDef.sdChars) { addFillerSpinners(fy, flow); flow = probeFlow(fy); }
+    const reachable = makeReachable(flow);
+    // 아이템·트램펄린은 "붐비는 길"에만 (저확률로 스치는 곳 제외)
+    const busyMin = trafficThreshold(flow, 0.6);
+    const reachableBusy = makeReachable(flow, busyMin);
 
-    // 아이템 뿌리기 (분신술 🪄 / 커지기 🍄) — 벽·기둥에 안 겹치고, 구슬이 지나가는 길 위에만
+    // 아이템 뿌리기 (분신술 🪄 / 커지기 🍄) — 벽·기둥에 안 겹치고, 구슬이 자주 지나가는 길에만
     const itemCount = Math.max(8, Math.floor((fy - 500) / 320));
     let placed = 0, guard = 0;
     while (placed < itemCount && guard++ < itemCount * 90) {
       const ix = 130 + Math.random() * (WORLD_W - 260);
       const iy = 520 + ((placed + Math.random()) / itemCount) * (fy - 1150);
       if (!spotClear(ix, iy, 62)) continue;
-      if (!reachable(ix, iy, 1)) continue;
+      if (!reachableBusy(ix, iy, 1)) continue;
       items.push(new Item(ix, iy,
         ['clone', 'grow', 'bomb', 'slow', 'clone', 'mag', 'grow', 'stun', 'bomb'][placed % 9]));
       placed++;
@@ -1597,7 +1762,7 @@ function buildMap(mapDef, previewOnly) {
       const px = 170 + Math.random() * (WORLD_W - 340);
       const py = 950 + ((pPlaced + Math.random()) / padCount) * Math.max(500, fy - 2200);
       if (!spotClear(px, py, 80)) continue;
-      if (!reachable(px, py, 1)) continue;
+      if (!reachableBusy(px, py, 1)) continue;
       if (holes.some(h => Math.hypot(h.x - px, h.y - py) < 260)) continue;
       if (items.some(it => Math.hypot(it.x - px, it.y - py) < 110)) continue;
       if (pads.some(pd => Math.hypot(pd.x - px, pd.y - py) < 380)) continue;
@@ -1617,6 +1782,7 @@ function buildMap(mapDef, previewOnly) {
         const t = 0.4 + Math.random() * 0.3;
         const px = w.x1 + (w.x2 - w.x1) * t;
         const py = w.y1 + (w.y2 - w.y1) * t - 15;   // 경사면 바로 위에 얹는다
+        if (!reachableBusy(px, py, 1)) continue;     // 저확률 경사엔 놓지 않는다
         if (pads.some(pd => Math.hypot(pd.x - px, pd.y - py) < 300)) continue;
         if (holes.some(h => Math.hypot(h.x - px, h.y - py) < 200)) continue;
         pads.push(new Pad(px, py, 110));
@@ -1634,7 +1800,7 @@ function buildMap(mapDef, previewOnly) {
           const py = h.y + 250 + Math.random() * 90;
           if (px < L + 120 || px > R - 120) continue;
           if (!spotClear(px, py, 70)) continue;
-          if (!reachable(px, py, 2)) continue;
+          if (!reachableBusy(px, py, 2)) continue;
           pads.push(new Pad(px, py));
           break outer;
         }
@@ -1689,11 +1855,46 @@ function buildMap(mapDef, previewOnly) {
         sPlaced++;
       }
     }
+
+    // 새싹이·곰돌이 벽돌 바로 아래에 트램펄린 3개씩 → 구슬이 튕겨 올라 여러 번 깨지는 걸 보게 한다
+    if (mapDef.sdChars) {
+      const padsUnder = color => {
+        const bricks = letters.filter(b => b.color === color);
+        if (!bricks.length) return;
+        const maxY = Math.max(...bricks.map(b => b.y));
+        const minX = Math.min(...bricks.map(b => b.x)), maxX = Math.max(...bricks.map(b => b.x));
+        for (const t of [0.2, 0.5, 0.8]) {
+          const px = minX + (maxX - minX) * t;
+          if (pads.some(pd => Math.hypot(pd.x - px, pd.y - (maxY + 150)) < 120)) continue;
+          pads.push(new Pad(px, maxY + 150, 130));
+        }
+      };
+      padsUnder(PAL_SAESSAK.G);   // 새싹이(초록) 아래
+      padsUnder(PAL_GOM.B);       // 곰돌이(갈색) 아래
+    }
+  }
+
+  // 신답 꿈길 맵: 새싹이·곰돌이를 코스 양옆을 따라 번갈아 세워둔다 (배경 캐릭터)
+  sdActive = !!mapDef.sdChars;
+  mascots = [];
+  if (sdActive) {
+    let idx = 0;
+    for (let my = 720; my < fy - 300; my += 880) {
+      mascots.push({
+        x: idx % 2 === 0 ? 96 : WORLD_W - 96,
+        y: my,
+        type: idx % 2 === 0 ? 'saessak' : 'gomdol',
+        flip: idx % 2 !== 0,
+      });
+      idx++;
+    }
   }
 
   // 배경 + 장식 준비 (이어달리기는 구간별 배경의 장식을 쓴다)
+  // 신답 꿈길 맵은 이모지 장식 대신 마스코트가 길가를 채우므로 장식을 깔지 않는다
   currentBg = mapDef.bg || DEFAULT_BG;
   decorations = [];
+  if (!mapDef.sdChars)
   for (let dy = 250; dy < fy - 300; dy += 200 + Math.random() * 150) {
     const side = Math.random() < 0.5;
     const zone = bgZones.find(z => dy >= z.y0 && dy < z.y1);
@@ -1984,7 +2185,8 @@ function collideRect(r, b) {
     r.vy += -(1 + 0.85) * vn * ny;
   }
   // 부딪히면 HP 감소 (작은 블록이라 잘 깨짐)
-  if (speed > 130) {
+  // fragile(마스코트·키워드) 블록은 살짝만 스쳐도 깨진다 → 튕기면서 벽이 깎여 파일업 방지
+  if (b.fragile || speed > 130) {
     b.hp--;
     b.shake = 0.25;
     if (b.hp <= 0) {
@@ -2754,6 +2956,15 @@ function drawBackground(viewH) {
       ctx.fill();
     }
   }
+  // 신답 꿈길 맵: 마스코트 + 교육비전 배너
+  if (sdActive) {
+    for (const m of mascots) {
+      if (m.y < camY - 120 || m.y > camY + viewH + 120) continue;
+      if (m.type === 'gomdol') drawMascotGom(m.x, m.y, m.flip);
+      else drawMascotSaessak(m.x, m.y, m.flip);
+    }
+    drawSdBanner();
+  }
   // 결승선
   ctx.save();
   ctx.translate(0, finishY);
@@ -2767,6 +2978,145 @@ function drawBackground(viewH) {
   ctx.textAlign = 'center';
   ctx.fillText('🏁 결승선 🏁', WORLD_W / 2, 70);
   ctx.restore();
+}
+
+// ── 신답초 교표 SVG (초록 링 + 좌우 신·답 + 노란 별꽃) — 배너·장식용 ──
+const SD_EMBLEM_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <circle cx="100" cy="103" r="79" fill="none" stroke="#1e7e34" stroke-width="36"/>
+  <rect x="0" y="81" width="200" height="44" fill="#ffffff"/>
+  <text x="31" y="103" font-family="'Pretendard Variable', Pretendard, sans-serif" font-size="42" font-weight="800" fill="#111" text-anchor="middle" dominant-baseline="central">신</text>
+  <text x="169" y="103" font-family="'Pretendard Variable', Pretendard, sans-serif" font-size="42" font-weight="800" fill="#111" text-anchor="middle" dominant-baseline="central">답</text>
+  <polygon points="100,4 114,86 152,103 116,118 134,196 100,132 66,196 84,118 48,103 86,86" fill="#f7df1b"/>
+</svg>`;
+const EMBLEM_IMG = new Image();
+EMBLEM_IMG.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(SD_EMBLEM_SVG);
+
+// ── 신답 마스코트 벡터 드로잉 (코스 길가 배경 캐릭터) ──
+// 새싹이: 초록 잎사귀 후드 + 흰 얼굴, 가슴에 교표
+function drawMascotSaessak(x, y, flip) {
+  ctx.save();
+  ctx.translate(x, y + Math.sin(performance.now() / 500 + x) * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.10)';
+  ctx.beginPath(); ctx.ellipse(0, 68, 38, 8, 0, 0, Math.PI * 2); ctx.fill();
+  if (flip) ctx.scale(-1, 1);
+  const GREEN = '#6cbf45', DARK = '#4f9f34';
+  // 발
+  ctx.fillStyle = '#fffef6';
+  ctx.beginPath(); ctx.ellipse(-15, 62, 11, 8, 0, 0, Math.PI * 2); ctx.ellipse(15, 62, 11, 8, 0, 0, Math.PI * 2); ctx.fill();
+  // 몸통
+  ctx.fillStyle = GREEN;
+  ctx.beginPath(); ctx.ellipse(0, 38, 26, 27, 0, 0, Math.PI * 2); ctx.fill();
+  // 손
+  ctx.fillStyle = '#fffef6';
+  ctx.beginPath(); ctx.ellipse(-26, 34, 7, 7, 0, 0, Math.PI * 2); ctx.ellipse(26, 34, 7, 7, 0, 0, Math.PI * 2); ctx.fill();
+  // 가슴의 교표 (흰 원 + 초록 링 + 노란 별)
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(0, 42, 10, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#2e8b3a'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(0, 42, 10, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#f5d613';
+  ctx.beginPath(); ctx.moveTo(0, 34); ctx.lineTo(5, 49); ctx.lineTo(0, 44); ctx.lineTo(-5, 49); ctx.closePath(); ctx.fill();
+  // 머리(후드)
+  ctx.fillStyle = GREEN;
+  ctx.beginPath(); ctx.arc(0, -8, 34, 0, Math.PI * 2); ctx.fill();
+  // 얼굴
+  ctx.fillStyle = '#fffef8';
+  ctx.beginPath(); ctx.ellipse(0, -4, 26, 24, 0, 0, Math.PI * 2); ctx.fill();
+  // 눈·입 (점)
+  ctx.fillStyle = '#4a3628';
+  ctx.beginPath();
+  ctx.arc(-10, -7, 2.7, 0, Math.PI * 2); ctx.arc(10, -7, 2.7, 0, Math.PI * 2);
+  ctx.arc(0, 0, 2, 0, Math.PI * 2);
+  ctx.fill();
+  // 머리 위 잎 두 장
+  for (const s of [-1, 1]) {
+    ctx.save();
+    ctx.translate(s * 11, -38);
+    ctx.rotate(s * 0.65);
+    ctx.fillStyle = s < 0 ? DARK : GREEN;
+    ctx.beginPath(); ctx.ellipse(0, -18, 11, 22, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, -2); ctx.lineTo(0, -32); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+// 곰돌이: 갈색 곰 + 교표 달린 초록 교모 + 노란 완장
+function drawMascotGom(x, y, flip) {
+  ctx.save();
+  ctx.translate(x, y + Math.sin(performance.now() / 500 + x) * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.10)';
+  ctx.beginPath(); ctx.ellipse(0, 68, 38, 8, 0, 0, Math.PI * 2); ctx.fill();
+  if (flip) ctx.scale(-1, 1);
+  const BROWN = '#b07845', GREEN = '#1e6b3c';
+  // 다리
+  ctx.fillStyle = BROWN;
+  ctx.beginPath(); ctx.ellipse(-14, 58, 12, 11, 0, 0, Math.PI * 2); ctx.ellipse(14, 58, 12, 11, 0, 0, Math.PI * 2); ctx.fill();
+  // 몸통 + 팔
+  ctx.beginPath(); ctx.ellipse(0, 34, 27, 28, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(-27, 28, 9, 14, 0.3, 0, Math.PI * 2); ctx.ellipse(27, 28, 9, 14, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  // 노란 완장
+  ctx.save();
+  ctx.translate(27, 24); ctx.rotate(-0.3);
+  ctx.fillStyle = '#ffd23b'; ctx.fillRect(-9, -4, 18, 9);
+  ctx.restore();
+  // 귀
+  ctx.fillStyle = BROWN;
+  ctx.beginPath(); ctx.arc(-27, -30, 10, 0, Math.PI * 2); ctx.arc(27, -30, 10, 0, Math.PI * 2); ctx.fill();
+  // 머리
+  ctx.beginPath(); ctx.ellipse(0, -12, 32, 29, 0, 0, Math.PI * 2); ctx.fill();
+  // 주둥이
+  ctx.fillStyle = '#d1a06a';
+  ctx.beginPath(); ctx.ellipse(0, -2, 12, 9, 0, 0, Math.PI * 2); ctx.fill();
+  // 눈·코·입
+  ctx.fillStyle = '#3a2b1a';
+  ctx.beginPath(); ctx.arc(-11, -14, 3, 0, Math.PI * 2); ctx.arc(11, -14, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, -6, 4.5, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#3a2b1a'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0, -2, 5, 0.4, Math.PI - 0.4); ctx.stroke();
+  // 분홍 볼
+  ctx.fillStyle = 'rgba(255,140,160,0.55)';
+  ctx.beginPath(); ctx.ellipse(-20, -5, 6, 4.5, 0, 0, Math.PI * 2); ctx.ellipse(20, -5, 6, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+  // 초록 교모 (크라운 + 챙)
+  ctx.fillStyle = GREEN;
+  ctx.beginPath();
+  ctx.moveTo(-22, -34); ctx.lineTo(-22, -50);
+  ctx.quadraticCurveTo(-22, -56, -14, -56);
+  ctx.lineTo(14, -56);
+  ctx.quadraticCurveTo(22, -56, 22, -50);
+  ctx.lineTo(22, -34);
+  ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, -34, 33, 8, 0, 0, Math.PI * 2); ctx.fill();
+  // 모자의 교표 (흰 원 + 노란 별)
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(0, -45, 7.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#f5d613';
+  ctx.beginPath(); ctx.moveTo(0, -51); ctx.lineTo(4, -40); ctx.lineTo(0, -43.5); ctx.lineTo(-4, -40); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ── 교육비전 배너: 교표 + "배려와 도전을 통하여 꿈을 찾고 가꾸는 어린이" ──
+// 색을 나눠 칠하는 한 줄 텍스트 (가운데 정렬)
+function drawColorSegs(segs, y) {
+  const ws = segs.map(([t]) => ctx.measureText(t).width);
+  let x = WORLD_W / 2 - ws.reduce((a, b) => a + b, 0) / 2;
+  ctx.textAlign = 'left';
+  segs.forEach(([t, c], i) => { ctx.fillStyle = c; ctx.fillText(t, x, y); x += ws[i]; });
+  ctx.textAlign = 'center';
+}
+function drawSdBanner() {
+  if (camY > 220) return;   // 코스 상단에서만
+  ctx.textBaseline = 'middle';
+  // 교표는 출발 깔때기 위 빈 공간에
+  if (EMBLEM_IMG.complete && EMBLEM_IMG.naturalWidth)
+    ctx.drawImage(EMBLEM_IMG, WORLD_W / 2 - 58, -118, 116, 116);
+  // 비전 문구는 교표 아래(깔때기 사이)에 두어 맵 이름표와 겹치지 않게
+  ctx.font = '800 34px "Pretendard Variable", Pretendard, sans-serif';
+  drawColorSegs([['배려', '#1e7e34'], ['와 ', '#2b3442'], ['도전', '#d0463a'], ['을 통하여', '#2b3442']], 66);
+  ctx.font = '800 44px "Pretendard Variable", Pretendard, sans-serif';
+  drawColorSegs([['꿈', '#8b3aa8'], ['을 찾고 가꾸는 어린이', '#2b3442']], 116);
 }
 
 function drawMap() {
