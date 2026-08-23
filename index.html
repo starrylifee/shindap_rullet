@@ -579,6 +579,7 @@
       <div class="result-btns">
         <button class="game-btn" id="copyResultBtn">결과 복사</button>
         <button class="game-btn" id="saveImgBtn">이미지 저장</button>
+        <button class="game-btn" id="dlVideoBtn" style="display:none">🎬 영상 다운로드</button>
         <button class="game-btn accent" id="exclAgainBtn2">당첨자 빼고 다시</button>
         <button class="game-btn" id="resultWatchBtn">레이스 화면</button>
         <button class="game-btn" id="resultAgainBtn">다시 하기</button>
@@ -851,7 +852,7 @@ document.querySelectorAll('.theme-btn').forEach(b => {
 });
 
 // ---------- 사운드 ----------
-let audioCtx = null;
+let audioCtx = null, recAudioDest = null;
 function beep(freq, dur, type = 'sine', vol = 0.2, delay = 0) {
   if (!soundOn) return;
   try {
@@ -862,6 +863,7 @@ function beep(freq, dur, type = 'sine', vol = 0.2, delay = 0) {
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     o.connect(g).connect(audioCtx.destination);
+    if (recAudioDest) g.connect(recAudioDest);
     o.start(t); o.stop(t + dur);
   } catch (e) {}
 }
@@ -903,6 +905,101 @@ $('fsBtn').onclick = () => {
 document.addEventListener('fullscreenchange', () => {
   $('fsBtn').textContent = document.fullscreenElement ? '⛶ 창 모드' : '⛶ 전체화면';
 });
+
+// ---------- 경주 영상 녹화 ----------
+let recorder = null, recChunks = [], recCanvas = null, recCtx = null, recBlob = null, recActive = false;
+
+function startRecording() {
+  discardRecording();
+  try {
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return;
+    if (!recCanvas) { recCanvas = document.createElement('canvas'); recCtx = recCanvas.getContext('2d'); }
+    recCanvas.width = canvas.width;
+    recCanvas.height = canvas.height;
+    const stream = recCanvas.captureStream(30);
+    if (soundOn) {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (!recAudioDest) recAudioDest = audioCtx.createMediaStreamDestination();
+      stream.addTrack(recAudioDest.stream.getAudioTracks()[0]);
+    }
+    const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+    recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6000000 });
+    recChunks = [];
+    recorder.ondataavailable = e => { if (e.data && e.data.size) recChunks.push(e.data); };
+    recorder.start(1000);
+    recActive = true;
+  } catch (e) { recorder = null; recActive = false; }
+}
+
+// 매 프레임 게임 화면 + 꽃가루를 녹화 캔버스에 합성
+function captureRecFrame() {
+  if (!recActive || !recCtx) return;
+  try {
+    recCtx.drawImage(canvas, 0, 0, recCanvas.width, recCanvas.height);
+    recCtx.drawImage(confettiCanvas, 0, 0, recCanvas.width, recCanvas.height);
+    if ($('winnerOverlay').style.display === 'flex') drawRecWinnerBanner();
+  } catch (e) { recActive = false; }
+}
+
+// 당첨 발표 오버레이는 HTML이라 영상에 안 찍히므로 배너를 직접 그림
+function drawRecWinnerBanner() {
+  const w = recCanvas.width, h = recCanvas.height;
+  const names = raceWinners.slice(0, 8).join(', ') + (raceWinners.length > 8 ? ` 외 ${raceWinners.length - 8}명` : '');
+  const label = $('winnerLabel').textContent;
+  recCtx.save();
+  recCtx.textAlign = 'center';
+  const cw = Math.min(w * 0.8, 720), ch = 170;
+  const cx = w / 2, cy = h / 2;
+  recCtx.fillStyle = 'rgba(13,17,28,0.82)';
+  recCtx.beginPath();
+  recCtx.roundRect(cx - cw / 2, cy - ch / 2, cw, ch, 18);
+  recCtx.fill();
+  recCtx.strokeStyle = 'rgba(246,207,63,0.85)';
+  recCtx.lineWidth = 3;
+  recCtx.stroke();
+  recCtx.fillStyle = '#f6cf3f';
+  recCtx.font = '800 34px Pretendard, sans-serif';
+  recCtx.fillText('🎉 ' + label, cx, cy - 18);
+  recCtx.fillStyle = '#ffffff';
+  recCtx.font = '800 ' + (names.length > 20 ? 28 : 40) + 'px Pretendard, sans-serif';
+  recCtx.fillText(names, cx, cy + 40, cw - 60);
+  recCtx.restore();
+}
+
+function finishRecording() {
+  if (!recorder || !recActive) return;
+  recActive = false;
+  const r = recorder;
+  r.onstop = () => {
+    if (recChunks.length) {
+      recBlob = new Blob(recChunks, { type: 'video/webm' });
+      $('dlVideoBtn').style.display = '';
+    }
+    recChunks = [];
+  };
+  try { r.stop(); } catch (e) {}
+  recorder = null;
+}
+
+function discardRecording() {
+  recActive = false;
+  if (recorder) { try { recorder.onstop = null; recorder.stop(); } catch (e) {} recorder = null; }
+  recChunks = [];
+  recBlob = null;
+  $('dlVideoBtn').style.display = 'none';
+}
+
+$('dlVideoBtn').onclick = () => {
+  if (!recBlob) return;
+  const cls = $('classInput').value.trim();
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(recBlob);
+  a.download = `${cls || '신답룰렛'}_뽑기영상_${stamp}.webm`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+};
 
 let lastBounceSound = 0;
 function beepBounce(freqBase = 300) {
@@ -2653,6 +2750,7 @@ function onAllFinished() {
 function showResults() {
   resultShown = true;
   stopBgm();
+  finishRecording();
   const order = uniqueOrder();
   const cls = $('classInput').value.trim();
   $('resultTitle').textContent = '최종 결과';
@@ -3560,6 +3658,7 @@ function loop(ts) {
   }
   render();
   stepConfetti(dt);
+  captureRecFrame();
 }
 
 // ---------- 화면 전환 / 버튼 ----------
@@ -3612,6 +3711,7 @@ function startRace(entries, forcedMap) {
   camY = -300;
   raceRunning = true;
   lastTime = 0;
+  startRecording();
   cancelAnimationFrame(rafId);
   rafId = requestAnimationFrame(loop);
   beep(440, 0.15, 'sine', 0.2, 0);
@@ -3642,6 +3742,7 @@ $('toSetupBtn').onclick = goHome;
 function goHome() {
   raceRunning = false;
   stopBgm();
+  if (recActive) discardRecording();
   cancelAnimationFrame(rafId);
   gameScreen.style.display = 'none';
   setupScreen.style.display = 'flex';
