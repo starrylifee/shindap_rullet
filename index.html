@@ -936,13 +936,62 @@ function startRecording() {
 }
 
 // 매 프레임 게임 화면 + 꽃가루를 녹화 캔버스에 합성
+let recOutroUntil = 0;
 function captureRecFrame() {
   if (!recActive || !recCtx) return;
   try {
+    if (recOutroUntil) {
+      drawRecResultsFrame();
+      recCtx.drawImage(confettiCanvas, 0, 0, recCanvas.width, recCanvas.height);
+      if (performance.now() > recOutroUntil) finishRecording();
+      return;
+    }
     recCtx.drawImage(canvas, 0, 0, recCanvas.width, recCanvas.height);
     recCtx.drawImage(confettiCanvas, 0, 0, recCanvas.width, recCanvas.height);
     if ($('winnerOverlay').style.display === 'flex') drawRecWinnerBanner();
   } catch (e) { recActive = false; }
+}
+
+// 결과 화면이 뜨면 전체 순위 장면을 4초간 영상 끝에 담는다
+function startRecOutro() {
+  if (!recActive) return;
+  recOutroUntil = performance.now() + 4000;
+}
+
+function drawRecResultsFrame() {
+  const w = recCanvas.width, h = recCanvas.height;
+  recCtx.fillStyle = '#0d111c';
+  recCtx.fillRect(0, 0, w, h);
+  recCtx.textAlign = 'center';
+  recCtx.fillStyle = '#f6cf3f';
+  recCtx.font = '800 46px Pretendard, sans-serif';
+  recCtx.fillText('🏆 최종 결과', w / 2, 76);
+  recCtx.fillStyle = '#8b93a7';
+  recCtx.font = '600 24px Pretendard, sans-serif';
+  recCtx.fillText($('resultSub').textContent, w / 2, 116);
+
+  const order = uniqueOrder();
+  const n = order.length;
+  if (!n) return;
+  const cols = Math.ceil(n / 15);
+  const rows = Math.ceil(n / cols);
+  const colW = Math.min(400, (w - 120) / cols);
+  const topY = 165;
+  const lineH = Math.min(52, (h - topY - 30) / rows);
+  const startX = w / 2 - (cols * colW) / 2;
+  const medals = ['🥇', '🥈', '🥉'];
+  recCtx.textAlign = 'left';
+  order.forEach((r, i) => {
+    const c = Math.floor(i / rows), row = i % rows;
+    const x = startX + c * colW + 16;
+    const y = topY + row * lineH + lineH * 0.7;
+    const isWin = raceWinners.includes(r.name);
+    recCtx.font = '800 ' + Math.min(30, lineH - 16) + 'px Pretendard, sans-serif';
+    recCtx.fillStyle = isWin ? '#f6cf3f' : i < 3 ? '#e8ecf4' : '#aab2c4';
+    const medal = i < 3 ? medals[i] + ' ' : '';
+    const emoji = showChars && r.emoji ? r.emoji + ' ' : '';
+    recCtx.fillText(`${medal}${i + 1}등 ${emoji}${r.name}${isWin ? ' ★' : ''}`, x, y, colW - 32);
+  });
 }
 
 // 당첨 발표 오버레이는 HTML이라 영상에 안 찍히므로 배너를 직접 그림
@@ -971,6 +1020,7 @@ function drawRecWinnerBanner() {
 }
 
 function finishRecording() {
+  recOutroUntil = 0;
   if (!recorder || !recActive) return;
   recActive = false;
   const r = recorder;
@@ -986,6 +1036,7 @@ function finishRecording() {
 }
 
 function discardRecording() {
+  recOutroUntil = 0;
   recActive = false;
   if (recorder) { try { recorder.onstop = null; recorder.stop(); } catch (e) {} recorder = null; }
   recChunks = [];
@@ -2754,7 +2805,7 @@ function onAllFinished() {
 function showResults() {
   resultShown = true;
   stopBgm();
-  finishRecording();
+  startRecOutro();
   const order = uniqueOrder();
   const cls = $('classInput').value.trim();
   $('resultTitle').textContent = '최종 결과';
@@ -3746,7 +3797,7 @@ $('toSetupBtn').onclick = goHome;
 function goHome() {
   raceRunning = false;
   stopBgm();
-  if (recActive) discardRecording();
+  if (recActive) { if (recOutroUntil) finishRecording(); else discardRecording(); }
   cancelAnimationFrame(rafId);
   gameScreen.style.display = 'none';
   setupScreen.style.display = 'flex';
