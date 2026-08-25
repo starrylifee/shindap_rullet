@@ -1238,6 +1238,24 @@ function secRamps(y, n = 4) {
   }
   return y + 40;
 }
+// 넓은 기둥숲 — 버섯숲용: 커진 구슬(지름 92)도 여유 있게 지나가는 넓은 간격(틈 176)
+function secPegsWide(y, rows = 5) {
+  for (let row = 0; row < rows; row++) {
+    const yy = y + 60 + row * 150;
+    const offset = (row % 2) ? 100 : 0;
+    for (let x = 140 + offset; x < R - 60; x += 200) pegs.push(new Peg(x, yy, 12));
+  }
+  return y + 60 + rows * 150 + 40;
+}
+// 넓은 뱀길 — 버섯숲용: 끝 틈을 230으로 넓혀 커진 구슬도 술술 통과
+function secSerpentineWide(y, n = 4) {
+  for (let i = 0; i < n; i++) {
+    if (i % 2 === 0) walls.push(new Wall(L, y + 40, R - 230, y + 150));
+    else walls.push(new Wall(R, y + 40, L + 230, y + 150));
+    y += 245;
+  }
+  return y + 40;
+}
 // 뱀길 — 완만한 바닥을 좌→우→좌 길게 왕복 (좌우 이동 강조)
 function secSerpentine(y, n = 4) {
   for (let i = 0; i < n; i++) {
@@ -1597,7 +1615,7 @@ const MAPS = [
     bg: { top: '#88c9a1', bottom: '#c9f2d0', deco: ['🟢','🧪','💧','🍀'] } },
   // 버섯을 먹을 때마다 무럭무럭 커진다 (최대 46 — 가장 좁은 길 틈 124보다 한참 작아 어디든 통과 가능)
   // 좁은 문·회오리 구간은 빼고 넓은 길로만 구성
-  { id: 'mushroom', name: '무럭무럭 버섯숲', emoji: '🍄', secs: ['pegs4', 'zigzag', 'bumpers', 'ramps', 'serpentine', 'zigzag', 'pegs4'], finish: 'center', wind: 1, mushroom: true,
+  { id: 'mushroom', name: '무럭무럭 버섯숲', emoji: '🍄', secs: ['pegsW', 'zigzag', 'bumpers', 'ramps', 'serpentineW', 'zigzag', 'pegsW'], finish: 'sides', wind: 1, mushroom: true,
     bg: { top: '#e6a3b3', bottom: '#fdeedd', deco: ['🍄','🌲','🌰','🐿️','🌿'], cloud: true } },
   { id: 'mix',      name: '뒤죽박죽 랜덤',  emoji: '🎲', secs: 'shuffle', finish: 'shuffle', wind: 1,
     bg: { top: '#ffe29a', bottom: '#c4f0ff', deco: ['🎲','❓','🎈','🎪','🎁'], cloud: true } },
@@ -1617,6 +1635,8 @@ function runSection(key, y, schoolName) {
     case 'zigzagT': return secZigzagTrap(y, 3);
     case 'ramps': return secRamps(y, 4);
     case 'serpentine': return secSerpentine(y, 4);
+    case 'pegsW': return secPegsWide(y, 5);
+    case 'serpentineW': return secSerpentineWide(y, 4);
     case 'serpentineT': return secSerpentineTrap(y, 4);
     case 'vortex': return secVortex(y);
     case 'spinners': return secSpinners(y, false);
@@ -2019,7 +2039,7 @@ function buildMap(mapDef, previewOnly) {
 
     // 버섯숲: 커지기 🍄를 코스 전체에 촘촘히 깐다 — 먹을수록 무럭무럭
     if (mapDef.mushroom) {
-      const mCount = Math.max(20, Math.floor((fy - 500) / 140));
+      const mCount = Math.max(30, Math.floor((fy - 500) / 95));
       let mPlaced = 0, mGuard = 0;
       while (mPlaced < mCount && mGuard++ < mCount * 60) {
         const mx = 140 + Math.random() * (WORLD_W - 280);
