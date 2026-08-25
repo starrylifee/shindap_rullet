@@ -1595,6 +1595,10 @@ const MAPS = [
     bg: { top: '#ffe9a8', bottom: '#fff8e1', deco: ['🍌','🐒','🌴','🥥'], cloud: true } },
   { id: 'slime',  name: '슬라임 늪',    emoji: '🟢', secs: ['pegs3', 'zigzag', 'serpentine', 'pegs4', 'zigzag', 'pegs3'], finish: 'center', slime: true,
     bg: { top: '#88c9a1', bottom: '#c9f2d0', deco: ['🟢','🧪','💧','🍀'] } },
+  // 버섯을 먹을 때마다 무럭무럭 커진다 (최대 46 — 가장 좁은 길 틈 124보다 한참 작아 어디든 통과 가능)
+  // 좁은 문·회오리 구간은 빼고 넓은 길로만 구성
+  { id: 'mushroom', name: '무럭무럭 버섯숲', emoji: '🍄', secs: ['pegs4', 'zigzag', 'bumpers', 'ramps', 'serpentine', 'zigzag', 'pegs4'], finish: 'center', wind: 1, mushroom: true,
+    bg: { top: '#e6a3b3', bottom: '#fdeedd', deco: ['🍄','🌲','🌰','🐿️','🌿'], cloud: true } },
   { id: 'mix',      name: '뒤죽박죽 랜덤',  emoji: '🎲', secs: 'shuffle', finish: 'shuffle', wind: 1,
     bg: { top: '#ffe29a', bottom: '#c4f0ff', deco: ['🎲','❓','🎈','🎪','🎁'], cloud: true } },
   { id: 'full',     name: '풀코스 마라톤',  emoji: '🏃', secs: ['pegs4', 'zigzag', 'letters', 'spinners', 'enemiesA', 'gates', 'bumpers', 'ramps', 'pegs4'], finish: 'moving', wind: 1,
@@ -1632,6 +1636,8 @@ let currentBg = null;
 let decorations = [];
 let bgZones = [];   // 이어달리기: 구간별 배경 (y0~y1에 해당 맵 배경)
 let sdActive = false;   // 신답 꿈길 맵일 때 마스코트·비전 배너 표시
+let growMax = 34;       // 🍄 커지기 최대 반지름 (버섯숲 맵은 46까지)
+let growFactor = 1.35;  // 🍄 한 개당 커지는 비율 (버섯숲은 1.22 — 여러 개 먹으며 무럭무럭)
 let mascots = [];       // 코스 옆을 따라 배치되는 새싹이/곰돌이 (월드 좌표)
 
 function shuffleSecs() {
@@ -1776,6 +1782,9 @@ function buildFinish(style, fy) {
 function buildMap(mapDef, previewOnly) {
   walls = []; pegs = []; spinners = []; letters = []; enemies = []; particles = []; items = []; holes = []; pads = []; traps = [];
   fans = []; bananas = []; slimes = [];
+  // 🍄 커지기 규칙 — 버섯숲 맵은 최대 46 (전 맵 최소 통로 폭 124보다 작아 끼는 곳 없음)
+  growMax = mapDef.mushroom ? 46 : 34;
+  growFactor = mapDef.mushroom ? 1.22 : 1.35;
   letterLog = [];
   movingGate = null;
   bgZones = [];
@@ -2008,6 +2017,21 @@ function buildMap(mapDef, previewOnly) {
       }
     }
 
+    // 버섯숲: 커지기 🍄를 코스 전체에 촘촘히 깐다 — 먹을수록 무럭무럭
+    if (mapDef.mushroom) {
+      const mCount = Math.max(20, Math.floor((fy - 500) / 140));
+      let mPlaced = 0, mGuard = 0;
+      while (mPlaced < mCount && mGuard++ < mCount * 60) {
+        const mx = 140 + Math.random() * (WORLD_W - 280);
+        const my = 560 + ((mPlaced + Math.random()) / mCount) * (fy - 1200);
+        if (!spotClear(mx, my, 55)) continue;
+        if (!reachableBusy(mx, my, 1)) continue;
+        if (items.some(it => Math.hypot(it.x - mx, it.y - my) < 80)) continue;
+        items.push(new Item(mx, my, 'grow'));
+        mPlaced++;
+      }
+    }
+
     // 새싹이·곰돌이 벽돌 바로 아래에 트램펄린 3개씩 → 구슬이 튕겨 올라 여러 번 깨지는 걸 보게 한다
     if (mapDef.sdChars) {
       const padsUnder = color => {
@@ -2077,7 +2101,8 @@ function makeChainDef() {
     // 테마 장치는 연결된 맵 것을 물려받는다
     wind: Math.max(...defs.map(d => d.wind || 0)),
     banana: defs.some(d => d.banana),
-    slime: defs.some(d => d.slime)
+    slime: defs.some(d => d.slime),
+    mushroom: defs.some(d => d.mushroom)
   };
 }
 
@@ -2672,8 +2697,8 @@ function stepPhysics(dt) {
           beep(700, 0.18, 'triangle', 0.2);
           beep(1050, 0.18, 'triangle', 0.2, 0.12);
         } else if (it.type === 'grow') {
-          // 커지기! 좁은 틈은 못 지나갈 수도
-          r.r = Math.min(r.r * 1.35, 34);
+          // 커지기! (버섯숲 맵은 조금씩 여러 번, 더 크게 자란다)
+          r.r = Math.min(r.r * growFactor, growMax);
           beep(220, 0.25, 'sawtooth', 0.15);
         }
         break;
