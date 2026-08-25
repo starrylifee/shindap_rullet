@@ -1617,6 +1617,9 @@ const MAPS = [
   // 좁은 문·회오리 구간은 빼고 넓은 길로만 구성
   { id: 'mushroom', name: '무럭무럭 버섯숲', emoji: '🍄', secs: ['pegsW', 'zigzag', 'bumpers', 'ramps', 'serpentineW', 'zigzag', 'pegsW'], finish: 'sides', wind: 1, mushroom: true,
     bg: { top: '#e6a3b3', bottom: '#fdeedd', deco: ['🍄','🌲','🌰','🐿️','🌿'], cloud: true } },
+  // 분신술 🪄이 코스에 잔뜩 — 1개가 3개로 계속 분열 (이 맵만 상한 120), 순찰 블랙홀이 분신을 잡아먹으며 균형
+  { id: 'clonelab', name: '무한 분열 연구소', emoji: '🧬', secs: ['pegsW', 'zigzag', 'spinners', 'bumpers', 'serpentineW', 'ramps', 'pegs4'], finish: 'sides', cloneLab: true,
+    bg: { top: '#9fd0d6', bottom: '#eafcf6', deco: ['🧬','🧪','⚗️','🔬','🦠'] } },
   { id: 'mix',      name: '뒤죽박죽 랜덤',  emoji: '🎲', secs: 'shuffle', finish: 'shuffle', wind: 1,
     bg: { top: '#ffe29a', bottom: '#c4f0ff', deco: ['🎲','❓','🎈','🎪','🎁'], cloud: true } },
   { id: 'full',     name: '풀코스 마라톤',  emoji: '🏃', secs: ['pegs4', 'zigzag', 'letters', 'spinners', 'enemiesA', 'gates', 'bumpers', 'ramps', 'pegs4'], finish: 'moving', wind: 1,
@@ -1658,6 +1661,7 @@ let bgZones = [];   // 이어달리기: 구간별 배경 (y0~y1에 해당 맵 �
 let sdActive = false;   // 신답 꿈길 맵일 때 마스코트·비전 배너 표시
 let growMax = 34;       // 🍄 커지기 최대 반지름 (버섯숲 맵은 46까지)
 let growFactor = 1.35;  // 🍄 한 개당 커지는 비율 (버섯숲은 1.22 — 여러 개 먹으며 무럭무럭)
+let cloneCap = 90;      // 🪄 분신 포함 전체 구슬 상한 (분열 연구소 맵은 120)
 let mascots = [];       // 코스 옆을 따라 배치되는 새싹이/곰돌이 (월드 좌표)
 
 function shuffleSecs() {
@@ -1805,6 +1809,7 @@ function buildMap(mapDef, previewOnly) {
   // 🍄 커지기 규칙 — 버섯숲 맵은 최대 46 (전 맵 최소 통로 폭 124보다 작아 끼는 곳 없음)
   growMax = mapDef.mushroom ? 46 : 34;
   growFactor = mapDef.mushroom ? 1.22 : 1.35;
+  cloneCap = mapDef.cloneLab ? 120 : 90;
   letterLog = [];
   movingGate = null;
   bgZones = [];
@@ -1907,8 +1912,24 @@ function buildMap(mapDef, previewOnly) {
       placed++;
     }
 
+    // 분열 연구소: 분신술 🪄을 코스 전체에 촘촘히 — 1개가 3개로 계속 분열
+    if (mapDef.cloneLab) {
+      const cCount = Math.max(20, Math.floor((fy - 500) / 160));
+      let cPlaced = 0, cGuard = 0;
+      while (cPlaced < cCount && cGuard++ < cCount * 60) {
+        const cx = 140 + Math.random() * (WORLD_W - 280);
+        const cy = 560 + ((cPlaced + Math.random()) / cCount) * (fy - 1200);
+        if (!spotClear(cx, cy, 55)) continue;
+        if (!reachableBusy(cx, cy, 1)) continue;
+        if (items.some(it => Math.hypot(it.x - cx, it.y - cy) < 90)) continue;
+        items.push(new Item(cx, cy, 'clone'));
+        cPlaced++;
+      }
+    }
+
     // 블랙홀 배치 — 구슬 길 위에, 장애물·아이템과 안 겹치는 곳에만
-    const holeCount = Math.max(3, Math.floor((fy - 500) / 950));
+    // (분열 연구소는 블랙홀을 늘려 불어난 분신을 잡아먹게 한다 — 늘고 줄고 반복되는 재미)
+    const holeCount = Math.max(3, Math.floor((fy - 500) / (mapDef.cloneLab ? 550 : 950)));
     const holeSpan = Math.max(500, fy - 2100);
     let hPlaced = 0, hGuard = 0;
     while (!manualHoles && hPlaced < holeCount && hGuard++ < holeCount * 130) {
@@ -2122,7 +2143,8 @@ function makeChainDef() {
     wind: Math.max(...defs.map(d => d.wind || 0)),
     banana: defs.some(d => d.banana),
     slime: defs.some(d => d.slime),
-    mushroom: defs.some(d => d.mushroom)
+    mushroom: defs.some(d => d.mushroom),
+    cloneLab: defs.some(d => d.cloneLab)
   };
 }
 
@@ -2705,7 +2727,7 @@ function stepPhysics(dt) {
           r.magT = 2.5;
           beep(880, 0.1, 'sine', 0.15);
           beep(660, 0.12, 'sine', 0.15, 0.1);
-        } else if (it.type === 'clone' && runners.length + newClones.length < 90) {
+        } else if (it.type === 'clone' && runners.length + newClones.length < cloneCap) {
           // 분신술! 1개 → 3개 (결과에는 가장 좋은 등수만 기록)
           for (let k = 0; k < 2; k++) {
             const c = new Runner(r.name, r.emoji, r.color, r.x + (k ? 26 : -26), r.y - 10);
